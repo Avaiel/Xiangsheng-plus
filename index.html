@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>睡前相声</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#120d0a">
+
+<style>
+  :root {
+    --bg: #120d0a; --bg-card: #1c1510; --bg-hl: #2a2018;
+    --ink: #e9dcc4; --ink-dim: #a89478; 
+    --ember: #c97b3f; --ember-dim: #5c3417; --ember-light: #e89554;
+    --line: #3a2a1e;
+    --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  
+  html, body {
+    margin: 0; padding: 0; height: 100vh; height: 100dvh; overflow: hidden;
+    background: var(--bg); color: var(--ink); font-family: var(--font);
+  }
+  
+  body {
+    display: flex; flex-direction: column; 
+    padding: env(safe-area-inset-top, 16px) 16px env(safe-area-inset-bottom, 16px);
+  }
+
+  /* --- 顶部区域 --- */
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 4px;}
+  .top-bar h1 { font-size: 20px; margin: 0; font-weight: 600; letter-spacing: 2px; }
+  .btn-icon { background: var(--bg-card); border: 1px solid var(--line); border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; font-size: 18px; cursor: pointer; color: var(--ink-dim); }
+  .btn-icon:active { background: var(--bg-hl); }
+
+  /* --- 核心动画与信息 --- */
+  .hero { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 90px; }
+  .fan { width: 50px; height: 50px; opacity: 0.8; margin-bottom: 8px; }
+  @keyframes breathe { 0%,100%{ transform: scale(1); opacity:0.6; } 50%{ transform: scale(1.1); opacity:1; filter: drop-shadow(0 0 12px var(--ember-dim)); } }
+  .fan.playing { animation: breathe 4s ease-in-out infinite; }
+  .np-label { font-size: 12px; color: var(--ember); letter-spacing: 2px; margin-bottom: 4px; font-weight: 500;}
+  .np-title { font-size: 22px; font-weight: 600; text-align: center; margin: 0 0 4px; width: 100%; line-height: 1.4; padding: 4px 10px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .np-phase { font-size: 13px; color: var(--ink-dim); }
+
+  /* --- 移动端特色：分段控制器 --- */
+  .config-panel { background: var(--bg-card); border-radius: 20px; padding: 16px; margin-bottom: 16px; border: 1px solid var(--line); }
+  
+  .seg-title { font-size: 12px; color: var(--ink-dim); margin: 0 0 8px 4px; display: flex; justify-content: space-between;}
+  .seg-group { display: flex; background: var(--bg); border-radius: 12px; padding: 4px; margin-bottom: 12px; border: 1px solid var(--line); }
+  .seg-btn { flex: 1; text-align: center; padding: 8px 0; font-size: 14px; color: var(--ink-dim); border-radius: 8px; font-weight: 500; transition: 0.2s; }
+  .seg-btn.active { background: var(--ember-dim); color: var(--ember-light); box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+
+  /* --- 滑动条 (替代输入框) --- */
+  .slider-row { margin-bottom: 12px; display: none; }
+  .slider-row.show { display: block; }
+  input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; height: 34px; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; background: var(--bg); border-radius: 3px; border: 1px solid var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%; background: var(--ink); border: 2px solid var(--ember); margin-top: -8px; box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+
+  /* --- 时长胶囊按钮 --- */
+  .capsule-group { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .capsule-group::-webkit-scrollbar { display: none; }
+  .cap-btn { flex-shrink: 0; padding: 10px 16px; border-radius: 20px; background: var(--bg); border: 1px solid var(--line); color: var(--ink-dim); font-size: 13px; font-weight: 500; cursor: pointer; }
+  .cap-btn.active { background: var(--ember-dim); border-color: var(--ember); color: var(--ink); }
+
+  /* --- 进度条 (已修复遮挡问题) --- */
+  .timeline { margin-bottom: 16px; padding: 0 4px; }
+  .timeline-track { position: relative; height: 32px; display: flex; align-items: center; cursor: pointer; }
+  .timeline-bg { position: absolute; left: 0; height: 6px; width: 100%; background: var(--bg-card); border-radius: 3px; border: 1px solid var(--line); }
+  .timeline-fill { position: absolute; left: 0; height: 6px; width: 0%; background: linear-gradient(90deg, var(--ember-dim), var(--ember)); border-radius: 3px; pointer-events: none;}
+  .timeline-thumb { position: absolute; left: 0%; width: 16px; height: 16px; margin-left: -8px; border-radius: 50%; background: var(--ink); border: 2px solid var(--ember); box-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none;}
+  .time-text { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+
+  /* --- 底部主控 --- */
+  .controls { display: flex; align-items: center; justify-content: center; gap: 24px; padding-bottom: 8px; margin-bottom: 8px;}
+  .ctrl-btn { width: 48px; height: 48px; border-radius: 50%; background: var(--bg-card); border: 1px solid var(--line); color: var(--ink); font-size: 14px; display: flex; justify-content: center; align-items: center; }
+  .ctrl-btn:active { background: var(--bg-hl); }
+  .play-btn { width: 72px; height: 72px; border-radius: 36px; background: linear-gradient(135deg, var(--ember-light), var(--ember)); border: none; color: var(--bg); font-size: 20px; font-weight: bold; box-shadow: 0 4px 16px rgba(201, 123, 63, 0.3); }
+  .play-btn:active { transform: scale(0.95); }
+  .play-btn:disabled { filter: grayscale(1); opacity: 0.5; }
+
+  /* --- 底部弹窗 --- */
+  .sheet-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
+  .sheet-overlay.show { opacity: 1; pointer-events: auto; }
+  .sheet-content { position: absolute; bottom: -100%; left: 0; width: 100%; background: var(--bg-card); border-radius: 24px 24px 0 0; padding: 24px 20px env(safe-area-inset-bottom, 24px); transition: 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: 85vh;}
+  .sheet-overlay.show .sheet-content { bottom: 0; }
+  .sheet-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; text-align: center; }
+  .close-sheet { position: absolute; top: 20px; right: 20px; width: 30px; height: 30px; background: var(--bg); border-radius: 15px; border: none; color: var(--ink-dim); font-size: 16px; }
+
+  /* 列表与开关 */
+  .list-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
+  .list-row:last-child { border-bottom: none; }
+  .row-left { display: flex; flex-direction: column; gap: 4px; }
+  .row-title { font-size: 15px; color: var(--ink); }
+  .row-sub { font-size: 12px; color: var(--ink-dim); }
+  
+  .switch { width: 48px; height: 28px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); position: relative; }
+  .switch .knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink-dim); transition: 0.2s; }
+  .switch.on { background: var(--ember-dim); border-color: var(--ember); }
+  .switch.on .knob { left: 22px; background: var(--ember-light); }
+  
+  /* 资料库特定样式 */
+  .lib-scroll { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; margin-top: 10px; padding-bottom: 20px; }
+  .lib-group { margin-bottom: 20px; }
+  .lib-head { font-size: 13px; color: var(--ember); margin-bottom: 10px; display: flex; justify-content: space-between;}
+  .up-btn { background: var(--bg); border: 1px solid var(--line); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: var(--ink); }
+  .track-item { padding: 12px 10px; font-size: 14px; color: var(--ink-dim); border-bottom: 1px solid var(--line); }
+  .track-item.selected { color: var(--ember-light); font-weight: bold; background: rgba(201,123,63,0.1); border-radius: 8px; border-bottom: none; }
+  
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+
+  <div class="top-bar">
+    <h1>睡前相声</h1>
+    <div style="display:flex; gap:12px;">
+      <div class="btn-icon" id="btnLibrary">📁</div>
+      <div class="btn-icon" id="btnSettings">⚙️</div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <svg class="fan" id="fanIcon" viewBox="0 0 64 64" fill="none">
+      <path d="M32 58 L32 30" stroke="#c97b3f" stroke-width="2" stroke-linecap="round"/>
+      <path d="M32 30 C 10 20, 6 4, 8 4 C 14 4, 24 16, 32 30 Z" fill="#c97b3f" opacity="0.85"/>
+      <path d="M32 30 C 54 20, 58 4, 56 4 C 50 4, 40 16, 32 30 Z" fill="#e9dcc4" opacity="0.75"/>
+    </svg>
+    <div class="np-label" id="npLabel">准备就绪</div>
+    <div class="np-title" id="npTitle">尚未播放</div>
+    <div class="np-phase" id="npPhase">在下方选择你要听的组合</div>
+  </div>
+
+  <div class="config-panel">
+    <div class="seg-title"><span>开场 (阶段一)</span> <span id="p1Badge" style="color:var(--ember)">0段</span></div>
+    <div class="seg-group" id="segP1">
+      <div class="seg-btn active" data-val="duo">对口</div>
+      <div class="seg-btn" data-val="solo">单口</div>
+      <div class="seg-btn" data-val="story">评书</div>
+    </div>
+
+    <div class="seg-title"><span>收尾 (阶段二)</span> <span id="p2Badge" style="color:var(--ember)">0段</span></div>
+    <div class="seg-group" id="segP2">
+      <div class="seg-btn active" data-val="solo">单口</div>
+      <div class="seg-btn" data-val="duo">对口</div>
+      <div class="seg-btn" data-val="story">评书</div>
+      <div class="seg-btn" data-val="none">不播</div>
+    </div>
+
+    <div class="slider-row show" id="sliderUI">
+      <div class="seg-title"><span>第一阶段播放时长</span> <span id="sliderValTxt" style="color:var(--ink)">10 分钟</span></div>
+      <input type="range" id="switchSlider" min="1" max="60" value="10">
+    </div>
+
+    <div class="seg-title" style="margin-top:16px;">定时</div>
+    <div class="capsule-group">
+      <div class="cap-btn" data-min="15">15分钟</div>
+      <div class="cap-btn active" data-min="20">20分钟</div>
+      <div class="cap-btn" data-min="30">30分钟</div>
+      <div class="cap-btn" data-min="-1">播完本集</div>
+      <div class="cap-btn" id="customDurBtn" data-min="custom">自定义</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <div class="timeline-track" id="timelineTrack">
+      <div class="timeline-bg"></div>
+      <div class="timeline-fill" id="timelineFill"></div>
+      <div class="timeline-thumb" id="timelineThumb"></div>
+    </div>
+    <div class="time-text">
+      <span id="elapsedLabel">00:00</span>
+      <span id="totalLabel">20:00</span>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-btn" id="seekBack">↺</div>
+    <button class="play-btn" id="startBtn" disabled>入睡</button>
+    <div class="ctrl-btn" id="reshuffleBtn">⏭</div>
+  </div>
+
+  <!-- 资料库弹窗 -->
+  <div class="sheet-overlay" id="libSheet">
+    <div class="sheet-content">
+      <button class="close-sheet" onclick="closeSheet('libSheet')">✕</button>
+      <div class="sheet-title">音频资料库</div>
+      <div class="lib-scroll">
+        <div class="lib-group">
+          <div class="lib-head"><span>对口相声库</span> <div class="up-btn" id="pickDuo">添加音频</div></div>
+          <div id="duoList"><div class="track-item">暂无缓存数据</div></div>
+        </div>
+        <div class="lib-group">
+          <div class="lib-head"><span>单口相声库</span> <div class="up-btn" id="pickSolo">添加音频</div></div>
+          <div id="soloList"><div class="track-item">暂无缓存数据</div></div>
+        </div>
+        <div class="lib-group">
+          <div class="lib-head"><span>评书联播库</span> <div class="up-btn" id="pickStory">添加音频</div></div>
+          <div id="storyList"><div class="track-item">暂无缓存数据</div></div>
+        </div>
+      </div>
+      <input type="file" id="duoInput" multiple accept="audio/*">
+      <input type="file" id="soloInput" multiple accept="audio/*">
+      <input type="file" id="storyInput" multiple accept="audio/*">
+    </div>
+  </div>
+
+  <!-- 高级设置弹窗 -->
+  <div class="sheet-overlay" id="setSheet">
+    <div class="sheet-content">
+      <button class="close-sheet" onclick="closeSheet('setSheet')">✕</button>
+      <div class="sheet-title">高级设置</div>
+      <div class="list-row">
+        <div class="row-left"><div class="row-title">自由选段模式</div><div class="row-sub">开启后可在资料库中手动指定播放哪一段</div></div>
+        <div class="switch" id="manualSwitch"><div class="knob"></div></div>
+      </div>
+      <div class="list-row">
+        <div class="row-left"><div class="row-title">淡入淡出切换</div><div class="row-sub">阶段切换时音量缓慢过渡，保护睡眠</div></div>
+        <div class="switch on" id="fadeSwitch"><div class="knob"></div></div>
+      </div>
+      <div class="list-row">
+        <div class="row-left"><div class="row-title">音频降噪优化</div><div class="row-sub">压低老录音的低频嗡嗡声与底噪</div></div>
+        <div class="switch" id="denoiseSwitch"><div class="knob"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <audio id="playerDuo" preload="auto"></audio>
+  <audio id="playerSolo" preload="auto"></audio>
+  <audio id="playerStory" preload="auto"></audio>
+
+<script>
+  const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
+
+  // --- 弹窗逻辑 ---
+  document.getElementById('btnLibrary').onclick = () => document.getElementById('libSheet').classList.add('show');
+  document.getElementById('btnSettings').onclick = () => document.getElementById('setSheet').classList.add('show');
+  function closeSheet(id) { document.getElementById(id).classList.remove('show'); }
+
+  // --- 数据库 ---
+  const DB_NAME = 'xiangsheng-db', DB_VERSION = 2;
+  function openDB(){
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = (e) => {
+        const db = req.result;
+        ['duo', 'solo', 'story'].forEach(store => { if (!db.objectStoreNames.contains(store)) db.createObjectStore(store, { keyPath: 'id' }); });
+      };
+      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+  }
+  async function saveTracks(storeName, tracks){
+    const db = await openDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readwrite'); tx.objectStore(storeName).clear();
+      tracks.forEach((t, i) => tx.objectStore(storeName).put({ id: t.title + '_' + i, title: t.title, blob: t.file }));
+      tx.oncomplete = resolve; tx.onerror = () => reject();
+    });
+  }
+  async function loadTracks(storeName){
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(storeName, 'readonly'); const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = () => resolve((req.result || []).map(r => ({ file: r.blob, title: r.title })));
+    });
+  }
+
+  const dbConfig = {
+    duo: { tracks: [], selected: null, elList: document.getElementById('duoList'), label: '对口相声', player: document.getElementById('playerDuo') },
+    solo: { tracks: [], selected: null, elList: document.getElementById('soloList'), label: '单口相声', player: document.getElementById('playerSolo') },
+    story: { tracks: [], selected: null, elList: document.getElementById('storyList'), label: '评书联播', player: document.getElementById('playerStory') },
+    none: { tracks: [], label: '无' }
+  };
+  
+  function toTrackList(files){ return Array.from(files).filter(f => AUDIO_EXT.test(f.name)).map(f => ({ file: f, title: f.name.replace(AUDIO_EXT, '') })); }
+  
+  function renderLists(){
+    ['duo', 'solo', 'story'].forEach(k => {
+      const cfg = dbConfig[k];
+      if (cfg.tracks.length === 0) { cfg.elList.innerHTML = '<div class="track-item">暂无缓存数据，请添加</div>'; return; }
+      cfg.elList.innerHTML = '';
+      cfg.tracks.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'track-item' + (cfg.selected === t ? ' selected' : '');
+        div.textContent = t.title;
+        div.onclick = () => { cfg.selected = t; renderLists(); updateStartState(); };
+        cfg.elList.appendChild(div);
+      });
+    });
+    updateBadges();
+  }
+
+  function updateBadges() {
+      document.getElementById('p1Badge').textContent = dbConfig[p1Val].tracks.length + '段可用';
+      document.getElementById('p2Badge').textContent = p2Val==='none' ? '' : (dbConfig[p2Val].tracks.length + '段可用');
+  }
+
+  ['duo', 'solo', 'story'].forEach(type => {
+    document.getElementById(`pick${type.charAt(0).toUpperCase()+type.slice(1)}`).onclick = () => document.getElementById(`${type}Input`).click();
+    document.getElementById(`${type}Input`).onchange = e => {
+      dbConfig[type].tracks = toTrackList(e.target.files); dbConfig[type].selected = null;
+      renderLists(); updateStartState(); saveTracks(type, dbConfig[type].tracks);
+    };
+  });
+
+  // --- UI 状态 ---
+  let p1Val = 'duo', p2Val = 'solo';
+  const sliderUI = document.getElementById('sliderUI'), slider = document.getElementById('switchSlider'), sliderTxt = document.getElementById('sliderValTxt');
+  let manualMode = false, fadeEnabled = true, denoiseOn = false;
+
+  function bindSeg(groupId, callback) {
+      const btns = document.querySelectorAll(`#${groupId} .seg-btn`);
+      btns.forEach(btn => {
+          btn.onclick = () => {
+              btns.forEach(b => b.classList.remove('active')); btn.classList.add('active');
+              callback(btn.dataset.val);
+          };
+      });
+  }
+  bindSeg('segP1', val => { p1Val = val; updateModeUI(); });
+  bindSeg('segP2', val => { p2Val = val; updateModeUI(); });
+
+  function isMixed() { return p2Val !== 'none'; }
+  function updateModeUI() {
+    sliderUI.classList.toggle('show', isMixed() && !playToEnd);
+    updateBadges(); updateStartState();
+  }
+  
+  slider.oninput = () => { sliderTxt.textContent = slider.value + ' 分钟'; paintTimeline(pausedElapsed, totalMinutes*60); };
+
+  document.getElementById('manualSwitch').onclick = function() { manualMode = !manualMode; this.classList.toggle('on', manualMode); updateStartState(); };
+  document.getElementById('fadeSwitch').onclick = function() { fadeEnabled = !fadeEnabled; this.classList.toggle('on', fadeEnabled); };
+
+  // --- 定时时长逻辑 (支持自定义) ---
+  let totalMinutes = 20, playToEnd = false;
+  const totalLabel = document.getElementById('totalLabel'), elapsedLabel = document.getElementById('elapsedLabel');
+  function fmt(sec){ sec = Math.max(0, Math.round(sec)); return String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0'); }
+
+  document.querySelectorAll('.cap-btn').forEach(btn => {
+      btn.onclick = () => {
+          let minRaw = btn.dataset.min;
+          let min;
+          if (minRaw === 'custom') {
+              const val = prompt("请输入自定义定时时长 (分钟)：", "45");
+              if (val !== null && !isNaN(val) && parseFloat(val) > 0) {
+                  min = parseFloat(val);
+                  btn.textContent = min + "分钟";
+              } else {
+                  return; // 取消或输入无效
+              }
+          } else {
+              const customBtn = document.getElementById('customDurBtn');
+              if (customBtn) customBtn.textContent = '自定义';
+              min = parseFloat(minRaw);
+          }
+
+          document.querySelectorAll('.cap-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          totalMinutes = min; playToEnd = (min === -1);
+          totalLabel.textContent = playToEnd ? '--:--' : fmt(min * 60);
+          updateModeUI(); paintTimeline(pausedElapsed, playToEnd ? 1 : totalMinutes*60);
+      };
+  });
+
+  function updateStartState(){
+    const checkReady = (type) => {
+      if (type === 'none') return true;
+      if (dbConfig[type].tracks.length === 0) return false;
+      if (manualMode && !dbConfig[type].selected) return false;
+      return true;
+    };
+    const ready = checkReady(p1Val) && checkReady(p2Val);
+    const startBtn = document.getElementById('startBtn');
+    startBtn.disabled = !ready || (hasSession && running);
+    startBtn.textContent = (hasSession && !running) ? '继续' : (running ? '播放中' : '入睡');
+    if(running) startBtn.style.background = 'var(--bg-hl)';
+    else startBtn.style.background = 'linear-gradient(135deg, var(--ember-light), var(--ember))';
+  }
+
+  (async () => {
+    for (let type of ['duo', 'solo', 'story']) {
+      try { const cached = await loadTracks(type).catch(()=>[]); if (cached.length) dbConfig[type].tracks = cached; } catch(e){}
+    }
+    renderLists(); updateModeUI();
+  })();
+
+  // --- 核心播放引擎 ---
+  let running = false, hasSession = false, finishing = false, switching = false;
+  let currentPhaseKey = 1; 
+  let sessionConfig = { 1: { type: null, title: '' }, 2: { type: null, title: '' } };
+  let sessionStartMs = 0, pausedElapsed = 0, tickTimer = null, switchTimer = null;
+
+  const timelineFill = document.getElementById('timelineFill'), timelineThumb = document.getElementById('timelineThumb');
+  const npLabel = document.getElementById('npLabel'), npTitle = document.getElementById('npTitle'), npPhase = document.getElementById('npPhase'), fanIcon = document.getElementById('fanIcon');
+
+  function activePlayer() { return dbConfig[sessionConfig[currentPhaseKey].type].player; }
+
+  function paintTimeline(cur, dur) {
+    const pct = Math.min(100, Math.max(0, (cur / (dur||1)) * 100));
+    timelineFill.style.width = pct + '%'; timelineThumb.style.left = pct + '%';
+    elapsedLabel.textContent = fmt(cur);
+    if(playToEnd) totalLabel.textContent = isNaN(dur) || dur===Infinity ? '--:--' : fmt(dur);
+  }
+
+  function startTicker(){
+    sessionStartMs = Date.now() - pausedElapsed * 1000;
+    tickTimer = setInterval(() => {
+      if (!running) return;
+      if (playToEnd) {
+         const p = activePlayer(); paintTimeline(p.currentTime || 0, p.duration || 1);
+      } else {
+         const elapsed = (Date.now() - sessionStartMs) / 1000;
+         paintTimeline(elapsed, totalMinutes * 60);
+         if (elapsed >= totalMinutes*60 && !finishing) finish();
+      }
+    }, 500);
+  }
+
+  function fadeVolume(player, from, to, ms){
+    return new Promise(resolve => {
+      if (!fadeEnabled || ms <= 30){ player.volume = to; resolve(); return; }
+      const steps = 20, stepTime = ms / steps; let i = 0; player.volume = from;
+      const iv = setInterval(() => { i++; player.volume = from + (to - from) * (i/steps); if(i >= steps){ clearInterval(iv); player.volume = to; resolve(); } }, stepTime);
+    });
+  }
+
+  async function finish(){
+    finishing = true; switching = true; clearTimeout(switchTimer);
+    npPhase.textContent = '渐渐睡去…';
+    const fades = ['duo','solo','story'].map(k => fadeVolume(dbConfig[k].player, dbConfig[k].player.volume||0, 0, 2500));
+    await Promise.all(fades);
+    ['duo','solo','story'].forEach(k => dbConfig[k].player.pause());
+    running = false; hasSession = false; clearInterval(tickTimer); fanIcon.classList.remove('playing');
+    npTitle.textContent = '已结束'; npLabel.textContent = '晚安'; npPhase.textContent = '做个好梦';
+    if(!playToEnd) paintTimeline(totalMinutes*60, totalMinutes*60);
+    updateStartState();
+  }
+
+  function pickRandom(type){ const arr = dbConfig[type].tracks; return arr[Math.floor(Math.random() * arr.length)]; }
+
+  async function playNext(phaseKey) {
+    if (!running || finishing || currentPhaseKey !== phaseKey) return;
+    const type = sessionConfig[phaseKey].type;
+    const track = manualMode && dbConfig[type].selected ? dbConfig[type].selected : pickRandom(type);
+    sessionConfig[phaseKey].title = track.title;
+    const p = dbConfig[type].player; p.src = URL.createObjectURL(track.file);
+    npTitle.textContent = track.title; await p.play();
+  }
+
+  async function beginSession(){
+    ['duo','solo','story'].forEach(k => { dbConfig[k].player.onended = null; dbConfig[k].player.ontimeupdate = null; });
+
+    sessionConfig[1].type = p1Val;
+    const track1 = manualMode && dbConfig[p1Val].selected ? dbConfig[p1Val].selected : pickRandom(p1Val);
+    sessionConfig[1].title = track1.title;
+    dbConfig[p1Val].player.src = URL.createObjectURL(track1.file);
+
+    if (isMixed()) {
+      sessionConfig[2].type = p2Val;
+      const track2 = manualMode && dbConfig[p2Val].selected ? dbConfig[p2Val].selected : pickRandom(p2Val);
+      sessionConfig[2].title = track2.title;
+      dbConfig[p2Val].player.src = URL.createObjectURL(track2.file);
+      dbConfig[p2Val].player.volume = 0;
+    }
+
+    hasSession = true; finishing = false; switching = false; currentPhaseKey = 1; pausedElapsed = 0;
+    paintTimeline(0, playToEnd ? 1 : totalMinutes*60);
+
+    const p = dbConfig[p1Val].player; p.volume = 1;
+    npLabel.textContent = dbConfig[p1Val].label; npTitle.textContent = track1.title; npPhase.textContent = '正在播放';
+    await p.play();
+
+    if (isMixed()) {
+      p.ontimeupdate = () => { if(!playToEnd && currentPhaseKey===1 && !switching && p.currentTime >= slider.value*60) { switching = true; doSwitch(); } };
+      p.onended = () => { if(currentPhaseKey===1 && !switching) { switching = true; doSwitch(); } };
+      dbConfig[p2Val].player.onended = () => { if(playToEnd) finish(); else playNext(2); };
+    } else {
+      p.onended = () => { if(playToEnd) finish(); else playNext(1); };
+    }
+    startTicker();
+  }
+
+  async function doSwitch(){
+    if (!running || finishing) return;
+    const p1Player = dbConfig[sessionConfig[1].type].player, p2Player = dbConfig[sessionConfig[2].type].player;
+    npPhase.textContent = '淡出…';
+    await fadeVolume(p1Player, p1Player.volume, 0, 1000); p1Player.pause();
+    npLabel.textContent = '切换中'; npTitle.textContent = ' '; npPhase.textContent = `停顿 3s…`;
+    await new Promise(r => switchTimer = setTimeout(r, 3000));
+    if (!running || finishing) return;
+    currentPhaseKey = 2; p2Player.volume = 0;
+    npLabel.textContent = dbConfig[sessionConfig[2].type].label; npTitle.textContent = sessionConfig[2].title; npPhase.textContent = '淡入…';
+    await p2Player.play(); await fadeVolume(p2Player, 0, 1, 1500);
+    npPhase.textContent = '正在播放';
+  }
+
+  document.getElementById('startBtn').onclick = async () => {
+    if (running) {
+        running = false; finishing = false; clearTimeout(switchTimer); clearInterval(tickTimer);
+        ['duo','solo','story'].forEach(k => dbConfig[k].player.pause());
+        pausedElapsed = (Date.now() - sessionStartMs) / 1000;
+        fanIcon.classList.remove('playing'); npPhase.textContent = '已暂停'; updateStartState();
+        return;
+    }
+    ensureAudioGraph(); if (audioCtx.state === 'suspended') audioCtx.resume();
+    running = true; fanIcon.classList.add('playing'); updateStartState();
+    if (hasSession && !finishing){ await activePlayer().play(); startTicker(); npPhase.textContent = '正在播放'; } 
+    else { await beginSession(); }
+  };
+
+  document.getElementById('reshuffleBtn').onclick = () => {
+    running = false; hasSession = false; finishing = false; switching = true; currentPhaseKey = 1; pausedElapsed = 0;
+    clearTimeout(switchTimer); clearInterval(tickTimer);
+    ['duo','solo','story'].forEach(k => { const c = dbConfig[k]; c.player.pause(); c.player.currentTime = 0; c.player.volume = 0; c.selected = null; });
+    fanIcon.classList.remove('playing'); npLabel.textContent = '准备就绪'; npTitle.textContent = '尚未播放'; npPhase.textContent = '已切歌，点击入睡开始';
+    paintTimeline(0, playToEnd?1:totalMinutes*60);
+    renderLists(); updateStartState();
+  };
+
+  document.getElementById('seekBack').onclick = () => { if(hasSession){ const p = activePlayer(); p.currentTime = Math.max(0, p.currentTime - 15); } };
+
+  function seekToTarget(targetSec) {
+    if (!hasSession) return;
+    if (isMixed() && !playToEnd) {
+        const sw = slider.value * 60, p1 = dbConfig[sessionConfig[1].type], p2 = dbConfig[sessionConfig[2].type];
+        if (targetSec < sw){
+          currentPhaseKey = 1; switching = false;
+          p1.player.currentTime = targetSec; p1.player.volume = 1; p2.player.pause(); p2.player.volume = 0;
+          if (running) p1.player.play();
+          npLabel.textContent = p1.label; npTitle.textContent = sessionConfig[1].title;
+        } else {
+          currentPhaseKey = 2; switching = true;
+          p2.player.currentTime = Math.max(0, targetSec - sw); p2.player.volume = 1; p1.player.pause(); p1.player.volume = 0;
+          if (running) p2.player.play();
+          npLabel.textContent = p2.label; npTitle.textContent = sessionConfig[2].title;
+        }
+        pausedElapsed = targetSec; sessionStartMs = Date.now() - targetSec * 1000;
+        npPhase.textContent = running ? '正在播放' : '已暂停';
+        paintTimeline(targetSec, totalMinutes*60);
+    } else {
+        const p = activePlayer(); p.currentTime = Math.min(p.duration||Infinity, targetSec);
+        if (running) p.play();
+        const cfg = dbConfig[sessionConfig[currentPhaseKey].type];
+        npLabel.textContent = cfg.label; npTitle.textContent = sessionConfig[currentPhaseKey].title; npPhase.textContent = running ? '正在播放' : '已暂停';
+        if (playToEnd) paintTimeline(p.currentTime, p.duration);
+        else { pausedElapsed = targetSec; sessionStartMs = Date.now() - targetSec * 1000; paintTimeline(targetSec, totalMinutes*60); }
+    }
+  }
+
+  let dragging = false; const tTrack = document.getElementById('timelineTrack');
+  function ratio(e){ const r = tTrack.getBoundingClientRect(), cx = e.touches ? e.touches[0].clientX : e.clientX; return Math.min(1, Math.max(0, (cx - r.left) / r.width)); }
+  
+  tTrack.onpointerdown = e => { if(!hasSession) return; dragging = true; tTrack.setPointerCapture(e.pointerId); paintTimeline(ratio(e)*(playToEnd?(activePlayer().duration||1):(totalMinutes*60)), playToEnd?(activePlayer().duration||1):(totalMinutes*60)); };
+  tTrack.onpointermove = e => { if(dragging) paintTimeline(ratio(e)*(playToEnd?(activePlayer().duration||1):(totalMinutes*60)), playToEnd?(activePlayer().duration||1):(totalMinutes*60)); };
+  tTrack.onpointerup = e => { if(dragging){ dragging = false; seekToTarget(ratio(e) * (playToEnd ? (activePlayer().duration||0) : totalMinutes*60)); } };
+  tTrack.onpointercancel = () => dragging = false;
+
+  let audioCtx = null;
+  function ensureAudioGraph(){
+    if(audioCtx) return; audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    ['duo','solo','story'].forEach(k => {
+      const cfg = dbConfig[k], source = audioCtx.createMediaElementSource(cfg.player), hp = audioCtx.createBiquadFilter(), lp = audioCtx.createBiquadFilter(), comp = audioCtx.createDynamicsCompressor();
+      hp.type = 'highpass'; hp.frequency.value = 20; lp.type = 'lowpass'; lp.frequency.value = 20000;
+      comp.threshold.value = -50; comp.ratio.value = 3; comp.knee.value = 30; comp.attack.value = 0.01; comp.release.value = 0.25;
+      source.connect(hp); hp.connect(lp); lp.connect(comp); comp.connect(audioCtx.destination);
+      cfg.nodes = { hp, lp, comp };
+    });
+  }
+  
+  document.getElementById('denoiseSwitch').onclick = function() {
+    denoiseOn = !denoiseOn; this.classList.toggle('on', denoiseOn);
+    if (!audioCtx) return; const now = audioCtx.currentTime;
+    ['duo','solo','story'].forEach(k => {
+      const c = dbConfig[k];
+      c.nodes.hp.frequency.setTargetAtTime(denoiseOn ? 110 : 20, now, 0.08);
+      c.nodes.lp.frequency.setTargetAtTime(denoiseOn ? 7500 : 20000, now, 0.08);
+      c.nodes.comp.threshold.setTargetAtTime(denoiseOn ? -34 : -50, now, 0.08);
+      c.nodes.comp.ratio.setTargetAtTime(denoiseOn ? 6 : 3, now, 0.08);
+    });
+  };
+
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
+</script>
+</body>
+</html>
