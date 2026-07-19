@@ -842,5 +842,565 @@
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 </script>
+  <!-- 睡前相声：数据保护增强补丁 v2
+     使用方法：把这一整段放到 index.html 的 </body> 之前。 -->
+<script>
+(() => {
+  'use strict';
+  if (window.__XS_DATA_PROTECTION_V2__) return;
+  window.__XS_DATA_PROTECTION_V2__ = true;
+
+  const STATS_KEY = 'xs_daily_stats';
+  const HISTORY_KEY = 'xs_history';
+  const SETTINGS_KEY = 'xs_settings_v2';
+  const SNAPSHOT_KEY = 'xs_auto_snapshots_v2';
+  const SNAPSHOT_LIMIT = 20;
+  const SNAPSHOT_INTERVAL_MS = 10 * 60 * 1000;
+
+  const readJson = (key, fallback) => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (err) {
+      console.warn('[数据保护] 读取失败：', key, err);
+      return fallback;
+    }
+  };
+
+  const writeJson = (key, value) => {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (err) {
+      console.error('[数据保护] 保存失败：', key, err);
+      alert('本地存储空间不足，数据保存失败。请先导出备份。');
+      return false;
+    }
+  };
+
+  const formatLocalDate = (date = new Date()) => {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const formatDateTime = (timestamp) => {
+    const d = new Date(timestamp);
+    return `${formatLocalDate(d)} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  };
+
+  // 修复热力图 UTC 日期偏移
+  getTodayStr = () => formatLocalDate(new Date());
+
+  const getSettings = () => ({
+    p1Val,
+    p2Val,
+    totalMinutes,
+    playToEnd,
+    sliderValue: Number(slider.value),
+    manualMode,
+    fadeEnabled,
+    denoiseOn
+  });
+
+  const buildBackupPayload = () => ({
+    schemaVersion: 2,
+    exportedAt: new Date().toISOString(),
+    stats: readJson(STATS_KEY, {}),
+    history: readJson(HISTORY_KEY, []),
+    settings: getSettings()
+  });
+
+  const createSnapshot = (reason = 'auto', force = false) => {
+    const snapshots = readJson(SNAPSHOT_KEY, []);
+    const now = Date.now();
+
+    if (!force && snapshots[0] && now - snapshots[0].createdAt < SNAPSHOT_INTERVAL_MS) {
+      return;
+    }
+
+    snapshots.unshift({
+      schemaVersion: 2,
+      createdAt: now,
+      reason,
+      data: buildBackupPayload()
+    });
+
+    writeJson(SNAPSHOT_KEY, snapshots.slice(0, SNAPSHOT_LIMIT));
+    updateBackupHint();
+  };
+
+  const saveSettings = () => {
+    writeJson(SETTINGS_KEY, getSettings());
+  };
+
+  const applySettings = () => {
+    const saved = readJson(SETTINGS_KEY, null);
+    if (!saved || typeof saved !== 'object') return;
+
+    const validTypes = new Set(['duo', 'solo', 'story', 'none']);
+    if (validTypes.has(saved.p1Val) && saved.p1Val !== 'none') p1Val = saved.p1Val;
+    if (validTypes.has(saved.p2Val)) p2Val = saved.p2Val;
+
+    manualMode = Boolean(saved.manualMode);
+    fadeEnabled = saved.fadeEnabled !== false;
+    denoiseOn = Boolean(saved.denoiseOn);
+
+    document.getElementById('manualSwitch')?.classList.toggle('on', manualMode);
+    document.getElementById('fadeSwitch')?.classList.toggle('on', fadeEnabled);
+    document.getElementById('denoiseSwitch')?.classList.toggle('on', denoiseOn);
+
+    const activateSegment = (groupId, value) => {
+      document.querySelectorAll(`#${groupId} .seg-btn`).forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.val === value);
+      });
+    };
+    activateSegment('segP1', p1Val);
+    activateSegment('segP2', p2Val);
+
+    if (Number.isFinite(Number(saved.totalMinutes))) {
+      totalMinutes = Number(saved.totalMinutes);
+      playToEnd = Boolean(saved.playToEnd) || totalMinutes === -1;
+
+      document.querySelectorAll('.cap-btn').forEach(btn => btn.classList.remove('active'));
+      let matched = null;
+
+      if (playToEnd) {
+        matched = document.querySelector('.cap-btn[data-min="-1"]');
+      } else {
+        matched = Array.from(document.querySelectorAll('.cap-btn'))
+          .find(btn => Number(btn.dataset.min) === totalMinutes);
+      }
+
+      if (!matched && !playToEnd) {
+        matched = document.getElementById('customDurBtn');
+        if (matched) matched.textContent = `${totalMinutes}分钟`;
+      }
+      matched?.classList.add('active');
+
+      totalLabel.textContent = playToEnd ? '--:--' : fmt(totalMinutes * 60);
+      if (!playToEnd) slider.max = totalMinutes;
+    }
+
+    if (Number.isFinite(Number(saved.sliderValue))) {
+      const maxValue = playToEnd ? Number(slider.max || 60) : totalMinutes;
+      slider.value = Math.max(0, Math.min(Number(saved.sliderValue), maxValue));
+      sliderTxt.textContent = `${slider.value} 分钟`;
+    }
+
+    updateModeUI();
+  };
+
+  // 每次写入前创建轮换快照，最多保留 20 份
+  savePlayTime = (seconds) => {
+    const value = Number(seconds);
+    if (!Number.isFinite(value) || value < 1) return;
+
+    createSnapshot('before-play-time-change');
+
+    const dateStr = getTodayStr();
+    const dailyStats = readJson(STATS_KEY, {});
+    dailyStats[dateStr] = (Number(dailyStats[dateStr]) || 0) + value;
+    writeJson(STATS_KEY, dailyStats);
+  };
+
+  saveHistory = (title, typeLabel) => {
+    createSnapshot('before-history-change');
+
+    const history = readJson(HISTORY_KEY, []);
+    const now = new Date();
+    const timeStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    history.unshift({
+      title: String(title || '未知曲目'),
+      type: String(typeLabel || '未知类型'),
+      time: timeStr
+    });
+
+    writeJson(HISTORY_KEY, history.slice(0, 100));
+  };
+
+  // 用本地日期重绘统计，避免中国时区凌晨错位
+  renderStats = () => {
+    const dailyStats = readJson(STATS_KEY, {});
+    const now = new Date();
+    const currYear = now.getFullYear();
+    const currMonth = now.getMonth() + 1;
+    const todayStr = formatLocalDate(now);
+
+    let tToday = 0;
+    let tMonth = 0;
+    let tYear = 0;
+
+    Object.entries(dailyStats).forEach(([date, rawSeconds]) => {
+      const sec = Number(rawSeconds) || 0;
+      if (date === todayStr) tToday += sec;
+      if (date.startsWith(`${currYear}-${String(currMonth).padStart(2, '0')}`)) tMonth += sec;
+      if (date.startsWith(String(currYear))) tYear += sec;
+    });
+
+    document.getElementById('statToday').textContent = Math.round(tToday / 60);
+    document.getElementById('statMonth').textContent = (tMonth / 3600).toFixed(1);
+    document.getElementById('statYear').textContent = (tYear / 3600).toFixed(1);
+
+    const grid = document.getElementById('heatmapGrid');
+    grid.innerHTML = '';
+
+    const dateEntries = [];
+    let maxSec = 1;
+    for (let daysAgo = 48; daysAgo >= 0; daysAgo--) {
+      const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - daysAgo);
+      const dateStr = formatLocalDate(d);
+      const sec = Number(dailyStats[dateStr]) || 0;
+      dateEntries.push({ dateStr, sec });
+      maxSec = Math.max(maxSec, sec);
+    }
+
+    dateEntries.forEach(({ dateStr, sec }) => {
+      let level = 0;
+      if (sec > 0) {
+        const ratio = sec / maxSec;
+        if (ratio < 0.25) level = 1;
+        else if (ratio < 0.5) level = 2;
+        else if (ratio < 0.75) level = 3;
+        else level = 4;
+      }
+
+      const cell = document.createElement('div');
+      cell.className = 'heat-cell';
+      cell.dataset.level = String(level);
+      cell.title = `${dateStr}：${Math.round(sec / 60)} 分钟`;
+      grid.appendChild(cell);
+    });
+
+    const historyList = document.getElementById('historyList');
+    const history = readJson(HISTORY_KEY, []);
+    if (history.length === 0) {
+      historyList.innerHTML = '<div style="font-size:12px;color:var(--ink-dim);text-align:center;">暂无播放记录</div>';
+    } else {
+      historyList.innerHTML = history.map(item => `
+        <div class="history-item">
+          <div class="hist-info">
+            <div class="hist-title">${escapeHtml(item.title)}</div>
+            <div class="hist-date">${escapeHtml(item.time)}</div>
+          </div>
+          <div class="hist-tag">${escapeHtml(item.type)}</div>
+        </div>
+      `).join('');
+    }
+  };
+
+  const escapeHtml = (value) => String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+  // 使用真实时间差统计，解决锁屏/后台时 setInterval 被降频导致少计
+  let lastStatClockMs = Date.now();
+
+  const collectActualPlayTime = (flushRemainder = false) => {
+    const now = Date.now();
+    let player = null;
+
+    try {
+      if (hasSession && sessionConfig[currentPhaseKey]?.type) player = activePlayer();
+    } catch (_) {}
+
+    if (running && player && !player.paused && !player.ended) {
+      const delta = Math.max(0, Math.min((now - lastStatClockMs) / 1000, 6 * 60 * 60));
+      accumulatedPlaySec += delta;
+    }
+    lastStatClockMs = now;
+
+    if (flushRemainder && accumulatedPlaySec >= 1) {
+      savePlayTime(accumulatedPlaySec);
+      accumulatedPlaySec = 0;
+      return;
+    }
+
+    if (accumulatedPlaySec >= 5) {
+      const whole = Math.floor(accumulatedPlaySec / 5) * 5;
+      savePlayTime(whole);
+      accumulatedPlaySec -= whole;
+    }
+  };
+
+  startTicker = () => {
+    sessionStartMs = Date.now() - pausedElapsed * 1000;
+    lastStatClockMs = Date.now();
+    clearInterval(tickTimer);
+
+    tickTimer = setInterval(() => {
+      if (!running) {
+        lastStatClockMs = Date.now();
+        return;
+      }
+
+      collectActualPlayTime(false);
+
+      const p = activePlayer();
+      if (playToEnd) {
+        paintTimeline(p.currentTime || 0, p.duration || 1);
+      } else {
+        const elapsed = (Date.now() - sessionStartMs) / 1000;
+        paintTimeline(elapsed, totalMinutes * 60);
+        if (elapsed >= totalMinutes * 60 && !finishing) finish();
+      }
+    }, 500);
+  };
+
+  // 通过音频事件补充后台统计
+  ['duo', 'solo', 'story'].forEach(type => {
+    const player = dbConfig[type]?.player;
+    if (!player) return;
+    player.addEventListener('timeupdate', () => collectActualPlayTime(false));
+    player.addEventListener('pause', () => collectActualPlayTime(true));
+    player.addEventListener('ended', () => collectActualPlayTime(true));
+  });
+
+  document.getElementById('startBtn')?.addEventListener('click', () => {
+    if (running) collectActualPlayTime(true);
+    lastStatClockMs = Date.now();
+  }, true);
+
+  document.getElementById('reshuffleBtn')?.addEventListener('click', () => {
+    collectActualPlayTime(true);
+  }, true);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      collectActualPlayTime(true);
+      saveSettings();
+      createSnapshot('app-hidden');
+    } else {
+      lastStatClockMs = Date.now();
+    }
+  });
+
+  window.addEventListener('pagehide', () => {
+    collectActualPlayTime(true);
+    saveSettings();
+    createSnapshot('pagehide');
+  });
+
+  const mergeStats = (current, incoming) => {
+    const result = { ...current };
+    Object.entries(incoming || {}).forEach(([date, rawValue]) => {
+      const value = Number(rawValue);
+      if (!Number.isFinite(value) || value < 0) return;
+      // 同一备份可重复导入，不重复累计
+      result[date] = Math.max(Number(result[date]) || 0, value);
+    });
+    return result;
+  };
+
+  const mergeHistory = (current, incoming) => {
+    const result = [];
+    const seen = new Set();
+
+    [...(current || []), ...(incoming || [])].forEach(item => {
+      if (!item || typeof item !== 'object') return;
+      const normalized = {
+        title: String(item.title || '未知曲目'),
+        type: String(item.type || '未知类型'),
+        time: String(item.time || '')
+      };
+      const key = `${normalized.title}\u0000${normalized.type}\u0000${normalized.time}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      result.push(normalized);
+    });
+
+    return result.slice(0, 100);
+  };
+
+  const applyImportedData = (data) => {
+    const currentStats = readJson(STATS_KEY, {});
+    const currentHistory = readJson(HISTORY_KEY, []);
+
+    writeJson(STATS_KEY, mergeStats(currentStats, data.stats || {}));
+    writeJson(HISTORY_KEY, mergeHistory(currentHistory, data.history || []));
+
+    if (data.settings && typeof data.settings === 'object') {
+      writeJson(SETTINGS_KEY, { ...readJson(SETTINGS_KEY, {}), ...data.settings });
+    }
+
+    applySettings();
+    renderStats();
+    saveSettings();
+  };
+
+  const exportBtn = document.getElementById('btnExport');
+  const importBtn = document.getElementById('btnImport');
+  const importInput = document.getElementById('importInput');
+
+  if (exportBtn) {
+    exportBtn.onclick = async () => {
+      createSnapshot('manual-export', true);
+      const data = {
+        ...buildBackupPayload(),
+        snapshots: readJson(SNAPSHOT_KEY, [])
+      };
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const fileName = `相声数据备份_${getTodayStr()}.json`;
+      const file = new File([blob], fileName, { type: 'application/json' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: '睡前相声数据备份',
+            text: '包含播放时长、热力图来源数据、历史记录和设置。'
+          });
+          return;
+        } catch (err) {
+          if (err?.name === 'AbortError') return;
+          console.warn('系统分享失败，改用下载：', err);
+        }
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    };
+  }
+
+  if (importBtn && importInput) {
+    importBtn.onclick = () => importInput.click();
+
+    importInput.onchange = event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = loadEvent => {
+        try {
+          const data = JSON.parse(String(loadEvent.target?.result || ''));
+          if (!data || typeof data !== 'object' || (!data.stats && !data.history)) {
+            throw new Error('备份文件缺少 stats/history');
+          }
+
+          const confirmed = confirm(
+            '恢复将采用“安全合并”：\n' +
+            '• 同一天播放时长取较大值，避免重复累计\n' +
+            '• 历史记录自动去重\n' +
+            '• 恢复前自动保存一份回滚快照\n\n' +
+            '确定继续吗？'
+          );
+          if (!confirmed) return;
+
+          createSnapshot('before-import', true);
+          applyImportedData(data);
+          alert('✅ 数据已安全合并恢复。');
+        } catch (err) {
+          console.error(err);
+          alert('❌ 备份文件格式错误，恢复失败。');
+        } finally {
+          importInput.value = '';
+          updateBackupHint();
+        }
+      };
+      reader.readAsText(file);
+    };
+  }
+
+  const rollbackLatestSnapshot = () => {
+    const snapshots = readJson(SNAPSHOT_KEY, []);
+    const latest = snapshots[0];
+    if (!latest?.data) {
+      alert('暂无可回滚的自动快照。使用一段时间后会自动生成。');
+      return;
+    }
+
+    const confirmed = confirm(
+      `最近快照时间：${formatDateTime(latest.createdAt)}\n` +
+      `快照原因：${latest.reason || '自动'}\n\n` +
+      '是否恢复到这份快照？当前数据会先自动备份。'
+    );
+    if (!confirmed) return;
+
+    createSnapshot('before-rollback', true);
+
+    writeJson(STATS_KEY, latest.data.stats || {});
+    writeJson(HISTORY_KEY, latest.data.history || []);
+    if (latest.data.settings) writeJson(SETTINGS_KEY, latest.data.settings);
+
+    applySettings();
+    renderStats();
+    saveSettings();
+    updateBackupHint();
+    alert('✅ 已恢复最近快照。再次点击“回滚”可以恢复刚才的状态。');
+  };
+
+  const injectRollbackButton = () => {
+    if (!exportBtn || document.getElementById('btnRollback')) return;
+    const wrapper = exportBtn.parentElement;
+    if (!wrapper) return;
+
+    const button = document.createElement('div');
+    button.className = 'up-btn';
+    button.id = 'btnRollback';
+    button.textContent = '回滚';
+    button.title = '恢复最近一次自动快照';
+    button.onclick = rollbackLatestSnapshot;
+    wrapper.appendChild(button);
+  };
+
+  function updateBackupHint() {
+    const exportButton = document.getElementById('btnExport');
+    const row = exportButton?.closest('.list-row');
+    const subtitle = row?.querySelector('.row-sub');
+    if (!subtitle) return;
+
+    const snapshots = readJson(SNAPSHOT_KEY, []);
+    subtitle.textContent = snapshots[0]
+      ? `保存播放时长、热力图与历史；最近快照：${formatDateTime(snapshots[0].createdAt)}`
+      : '保存播放时长、热力图与历史；系统会自动轮换保留快照。';
+  }
+
+  // 自动保存设置
+  document.querySelectorAll('#segP1 .seg-btn, #segP2 .seg-btn, .cap-btn').forEach(btn => {
+    btn.addEventListener('click', () => setTimeout(saveSettings, 0));
+  });
+  slider?.addEventListener('input', saveSettings);
+  ['manualSwitch', 'fadeSwitch', 'denoiseSwitch'].forEach(id => {
+    document.getElementById(id)?.addEventListener('click', () => setTimeout(saveSettings, 0));
+  });
+
+  // 音频图初始化后恢复降噪状态
+  document.getElementById('startBtn')?.addEventListener('click', () => {
+    setTimeout(() => {
+      if (!denoiseOn || !audioCtx) return;
+      const now = audioCtx.currentTime;
+      ['duo', 'solo', 'story'].forEach(type => {
+        const nodes = dbConfig[type]?.nodes;
+        if (!nodes) return;
+        nodes.hp.frequency.setTargetAtTime(110, now, 0.08);
+        nodes.lp.frequency.setTargetAtTime(7500, now, 0.08);
+        nodes.comp.threshold.setTargetAtTime(-34, now, 0.08);
+        nodes.comp.ratio.setTargetAtTime(6, now, 0.08);
+      });
+    }, 0);
+  });
+
+  injectRollbackButton();
+  applySettings();
+  createSnapshot('upgrade-v2', true);
+  updateBackupHint();
+  renderStats();
+
+  // 强制浏览器检查新版 Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js?v=2').catch(console.error);
+  }
+})();
+</script>
 </body>
 </html>
