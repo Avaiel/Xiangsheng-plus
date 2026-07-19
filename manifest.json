@@ -1,10 +1,12 @@
 {
   "name": "睡前相声",
   "short_name": "相声",
+  "description": "一个专为睡前助眠设计的相声播放器",
   "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#1a140f",
-  "theme_color": "#1a140f",
+  "background_color": "#120d0a",
+  "theme_color": "#120d0a",
+  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
@@ -14,7 +16,8 @@
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
