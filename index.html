@@ -91,15 +91,15 @@
   .sheet-content { position: absolute; bottom: -100%; left: 0; width: 100%; background: var(--bg-card); border-radius: 24px 24px 0 0; padding: 24px 20px env(safe-area-inset-bottom, 24px); transition: 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: 90vh;}
   .sheet-overlay.show .sheet-content { bottom: 0; }
   .sheet-title { font-size: 18px; font-weight: 600; margin: 0 0 20px; text-align: center; }
-  .close-sheet { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: var(--bg); border-radius: 16px; border: none; color: var(--ink-dim); font-size: 16px; display:flex; align-items:center; justify-content:center;}
+  .close-sheet { position: absolute; top: 20px; right: 20px; width: 32px; height: 32px; background: var(--bg); border-radius: 16px; border: none; color: var(--ink-dim); font-size: 16px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
 
   /* 列表与设置 */
   .list-row { display: flex; justify-content: space-between; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--line); }
   .list-row:last-child { border-bottom: none; }
-  .row-left { display: flex; flex-direction: column; gap: 4px; }
+  .row-left { display: flex; flex-direction: column; gap: 4px; flex: 1;}
   .row-title { font-size: 15px; color: var(--ink); }
-  .row-sub { font-size: 12px; color: var(--ink-dim); }
-  .switch { width: 48px; height: 28px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); position: relative; }
+  .row-sub { font-size: 12px; color: var(--ink-dim); line-height: 1.4; padding-right: 12px;}
+  .switch { width: 48px; height: 28px; border-radius: 14px; background: var(--bg); border: 1px solid var(--line); position: relative; flex-shrink: 0;}
   .switch .knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: var(--ink-dim); transition: 0.2s; }
   .switch.on { background: var(--ember-dim); border-color: var(--ember); }
   .switch.on .knob { left: 22px; background: var(--ember-light); }
@@ -114,8 +114,9 @@
   .lib-list { display: block; }
   .lib-list.folded { display: none; }
 
-  .up-btn { background: var(--bg); border: 1px solid var(--line); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: var(--ink); }
-  .track-item { padding: 12px 10px; font-size: 14px; color: var(--ink-dim); border-bottom: 1px solid var(--line); }
+  .up-btn { background: var(--bg); border: 1px solid var(--line); padding: 6px 12px; border-radius: 12px; font-size: 12px; color: var(--ink); cursor: pointer; flex-shrink: 0;}
+  .up-btn:active { background: var(--ember-dim); }
+  .track-item { padding: 12px 10px; font-size: 14px; color: var(--ink-dim); border-bottom: 1px solid var(--line); cursor: pointer;}
   .track-item.selected { color: var(--ember-light); font-weight: bold; background: rgba(201,123,63,0.1); border-radius: 8px; border-bottom: none; }
   input[type=file] { display: none; }
 
@@ -248,13 +249,12 @@
     </div>
   </div>
 
-  <!-- 资料库弹窗 (增加了折叠功能) -->
+  <!-- 资料库弹窗 -->
   <div class="sheet-overlay" id="libSheet">
     <div class="sheet-content">
       <button class="close-sheet" onclick="closeSheet('libSheet')">✕</button>
       <div class="sheet-title">音频资料库</div>
       <div class="scroll-area">
-        
         <div class="lib-head" style="margin-top:0;">
           <div class="lib-title" onclick="toggleLib('duoList', this)">对口相声库 <span class="arrow">▼</span></div> 
           <div class="up-btn" id="pickDuo">添加文件</div>
@@ -272,9 +272,7 @@
           <div class="up-btn" id="pickStory">添加文件</div>
         </div>
         <div id="storyList" class="lib-list"><div class="track-item">暂无缓存数据</div></div>
-        
       </div>
-      <!-- 支持音频与视频格式上传 -->
       <input type="file" id="duoInput" multiple accept="audio/*,video/*">
       <input type="file" id="soloInput" multiple accept="audio/*,video/*">
       <input type="file" id="storyInput" multiple accept="audio/*,video/*">
@@ -286,6 +284,20 @@
     <div class="sheet-content">
       <button class="close-sheet" onclick="closeSheet('setSheet')">✕</button>
       <div class="sheet-title">高级设置</div>
+      
+      <!-- 新增：备份与恢复模块 -->
+      <div class="list-row">
+        <div class="row-left">
+            <div class="row-title">数据备份与恢复</div>
+            <div class="row-sub">保存你的收听热力图与历史记录。</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <div class="up-btn" id="btnExport">备份</div>
+            <div class="up-btn" id="btnImport">恢复</div>
+            <input type="file" id="importInput" accept=".json">
+        </div>
+      </div>
+
       <div class="list-row"><div class="row-left"><div class="row-title">自由选段模式</div><div class="row-sub">开启后可在资料库中手动指定播放哪一段</div></div><div class="switch" id="manualSwitch"><div class="knob"></div></div></div>
       <div class="list-row"><div class="row-left"><div class="row-title">淡入淡出切换</div><div class="row-sub">阶段切换时音量缓慢过渡，保护睡眠</div></div><div class="switch on" id="fadeSwitch"><div class="knob"></div></div></div>
       <div class="list-row"><div class="row-left"><div class="row-title">音频降噪优化</div><div class="row-sub">压低老录音的低频嗡嗡声与底噪</div></div><div class="switch" id="denoiseSwitch"><div class="knob"></div></div></div>
@@ -297,7 +309,6 @@
   <audio id="playerStory" preload="auto"></audio>
 
 <script>
-  // 增加 mp4, webm 等视频格式支持
   const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 
   // --- 弹窗逻辑 ---
@@ -306,13 +317,12 @@
   document.getElementById('btnStats').onclick = () => { renderStats(); document.getElementById('statsSheet').classList.add('show'); };
   function closeSheet(id) { document.getElementById(id).classList.remove('show'); }
 
-  // 资料库折叠逻辑
   function toggleLib(listId, titleEl) {
       document.getElementById(listId).classList.toggle('folded');
       titleEl.classList.toggle('folded');
   }
 
-  // --- 统计与历史逻辑 ---
+  // --- 统计、历史与备份逻辑 ---
   function getTodayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
   
   function savePlayTime(seconds) {
@@ -397,6 +407,54 @@
           `).join('');
       }
   }
+
+  // 导出备份逻辑
+  document.getElementById('btnExport').onclick = async () => {
+      const data = {
+          stats: JSON.parse(localStorage.getItem('xs_daily_stats') || '{}'),
+          history: JSON.parse(localStorage.getItem('xs_history') || '[]')
+      };
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const file = new File([blob], `相声数据备份_${getTodayStr()}.json`, { type: 'application/json' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+              await navigator.share({
+                  files: [file],
+                  title: '睡前相声数据备份',
+                  text: '这是我的相声播放统计与历史记录备份。'
+              });
+          } catch (err) { console.log('用户取消分享或分享失败', err); }
+      } else {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = file.name;
+          a.click();
+      }
+  };
+
+  // 恢复数据逻辑
+  const importInput = document.getElementById('importInput');
+  document.getElementById('btnImport').onclick = () => importInput.click();
+  importInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+          try {
+              const data = JSON.parse(ev.target.result);
+              if (data.stats) localStorage.setItem('xs_daily_stats', JSON.stringify(data.stats));
+              if (data.history) localStorage.setItem('xs_history', JSON.stringify(data.history));
+              renderStats();
+              alert('✅ 数据恢复成功！');
+          } catch (err) {
+              alert('❌ 文件格式错误，恢复失败。');
+          }
+          importInput.value = ''; 
+      };
+      reader.readAsText(file);
+  };
 
   // --- 数据库 ---
   const DB_NAME = 'xiangsheng-db', DB_VERSION = 2;
