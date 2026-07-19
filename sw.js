@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xiangsheng-cache-v11-20260719';
+const CACHE_NAME = 'xiangsheng-cache-v12-20260719';
 const APP_SHELL = [
   './',
   './index.html',
@@ -29,10 +29,13 @@ async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
     const response = await fetch(request, { cache: 'no-store' });
-    if (response && response.ok) cache.put(request, response.clone());
+    if (response && response.ok) await cache.put(request, response.clone());
     return response;
   } catch (error) {
-    return (await cache.match(request)) || (request.mode === 'navigate' ? cache.match('./index.html') : Response.error());
+    const cached = await cache.match(request);
+    if (cached) return cached;
+    if (request.mode === 'navigate') return cache.match('./index.html');
+    return Response.error();
   }
 }
 

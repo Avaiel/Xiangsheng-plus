@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>睡前相声</title>
 <link rel="manifest" href="manifest.json">
-<link rel="icon" href="icon-192.png?v=11" type="image/png">
+<link rel="icon" href="icon-192.png?v=12" type="image/png">
 <style>
 :root{
   --bg:#120d0a;--card:#1c1510;--card2:#241a13;--hl:#2d2118;
@@ -201,6 +201,24 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
   max-width:86%;text-align:center;box-shadow:var(--shadow)
 }
 .toast.show{opacity:1;transform:translate(-50%,0)}
+
+.library-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:-2px 0 10px}
+.library-tip{font-size:10px;color:var(--dim);margin-left:auto}
+.artist-card{background:var(--bg);border:1px solid var(--line);border-radius:16px;margin-bottom:11px;overflow:hidden}
+.artist-head{display:flex;align-items:center;gap:7px;padding:12px 10px;background:linear-gradient(90deg,rgba(201,123,63,.09),transparent)}
+.artist-name{font-size:14px;font-weight:750;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.collapse-arrow{width:16px;flex:0 0 16px;color:var(--ember2);font-size:11px;text-align:center}
+.series-list{padding:0 8px 8px}.series-list.collapsed,.track-list.collapsed{display:none}
+.series-card{border:1px solid rgba(61,44,32,.86);border-radius:13px;margin-top:8px;overflow:hidden;background:var(--card)}
+.series-card.current-series{border-color:var(--ember);box-shadow:0 0 0 1px rgba(201,123,63,.18)}
+.series-head{display:flex;align-items:center;gap:7px;padding:10px 8px}
+.series-main{min-width:0;flex:1}.series-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.series-meta{font-size:9px;color:var(--dim);margin-top:3px}
+.mode-badge{font-size:9px;border:1px solid var(--line);border-radius:9px;padding:3px 6px;color:var(--dim);flex:0 0 auto}.mode-badge.sequential{color:var(--ember2);border-color:var(--ember-dark)}
+.episode-no{width:25px;flex:0 0 25px;text-align:center;font-variant-numeric:tabular-nums;font-size:10px;color:var(--ember2)}
+.track.completed .track-title{text-decoration:line-through;opacity:.62}.track.completed .episode-no{opacity:.55}
+.empty.compact{padding:14px 8px}
+@media(max-width:430px){.artist-head,.series-head{align-items:flex-start}.group-actions{max-width:132px;flex-wrap:wrap;justify-content:flex-end}.tiny{padding:5px 6px}.library-tip{width:100%;margin-left:0}}
+
 input[type=file]{display:none}
 @media(min-width:720px){
   .app{max-width:520px;margin:auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
@@ -211,7 +229,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.1 · 曲艺陪伴入眠</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2 · 艺术家与连续作品</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -233,7 +251,7 @@ input[type=file]{display:none}
       </svg>
       <div class="now-type" id="nowType">准备就绪</div>
       <div class="now-title" id="nowTitle">请选择曲艺资料</div>
-      <div class="now-group" id="nowGroup">在资料库中按艺术家或专辑分组</div>
+      <div class="now-group" id="nowGroup">按艺术家、作品与节目管理曲艺</div>
       <div class="now-phase" id="nowPhase">点击播放开始</div>
     </div>
 
@@ -247,7 +265,8 @@ input[type=file]{display:none}
             <button class="seg" data-phase="1" data-type="solo">单口</button>
             <button class="seg" data-phase="1" data-type="story">评书</button>
           </div>
-          <div class="select-row"><span class="select-label">艺术家/专辑</span><select class="select" id="phase1Group"></select></div>
+          <div class="select-row"><span class="select-label">艺术家</span><select class="select" id="phase1Artist"></select></div>
+          <div class="select-row"><span class="select-label">作品/系列</span><select class="select" id="phase1Series"></select></div>
           <div class="select-row" id="phase1TrackRow"><span class="select-label">指定节目</span><select class="select" id="phase1Track"></select></div>
         </div>
 
@@ -259,7 +278,8 @@ input[type=file]{display:none}
             <button class="seg" data-phase="2" data-type="story">评书</button>
             <button class="seg" data-phase="2" data-type="none">不播</button>
           </div>
-          <div class="select-row" id="phase2GroupRow"><span class="select-label">艺术家/专辑</span><select class="select" id="phase2Group"></select></div>
+          <div class="select-row" id="phase2ArtistRow"><span class="select-label">艺术家</span><select class="select" id="phase2Artist"></select></div>
+          <div class="select-row" id="phase2SeriesRow"><span class="select-label">作品/系列</span><select class="select" id="phase2Series"></select></div>
           <div class="select-row" id="phase2TrackRow"><span class="select-label">指定节目</span><select class="select" id="phase2Track"></select></div>
         </div>
 
@@ -323,7 +343,8 @@ input[type=file]{display:none}
     <button class="tab" data-type="solo">单口</button>
     <button class="tab" data-type="story">评书</button>
   </div>
-  <div class="lib-tools"><input class="search" id="librarySearch" placeholder="搜索艺术家、专辑或节目"><button class="small-btn primary" id="newGroupBtn">新建分组</button></div>
+  <div class="lib-tools"><input class="search" id="librarySearch" placeholder="搜索艺术家、作品或节目"><button class="small-btn primary" id="newArtistBtn">新建艺术家</button></div>
+  <div class="library-actions"><button class="small-btn" id="collapseProgramsBtn">收起节目单</button><button class="small-btn" id="expandAllBtn">全部展开</button><span class="library-tip">点击艺术家或作品标题可展开/收起</span></div>
   <div class="storage-box"><span id="storageText">正在读取存储空间…</span><button class="tiny" id="persistBtn">保护存储</button></div>
   <div class="import-progress" id="importProgress"></div>
   <div class="sheet-scroll" id="groupContainer"></div>
@@ -335,12 +356,12 @@ input[type=file]{display:none}
   <button class="close" data-close="settingsSheet">✕</button><h2 class="sheet-title">高级设置</h2>
   <div class="sheet-scroll">
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">数据备份与恢复</div><div class="setting-desc" id="backupDesc">播放时长、热力图、历史记录和设置；音频文件不包含在 JSON 备份中。</div></div>
+      <div class="setting-main"><div class="setting-name">数据备份与恢复</div><div class="setting-desc" id="backupDesc">播放时长、热力图、艺术家、作品、节目进度和设置；音频文件不包含在 JSON 备份中。</div></div>
       <div class="button-row"><button class="small-btn primary" id="exportBtn">备份</button><button class="small-btn" id="importBtn">恢复</button><button class="small-btn" id="rollbackBtn">回滚</button></div>
       <input type="file" id="backupInput" accept=".json,application/json">
     </div>
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">自由选段模式</div><div class="setting-desc">开启后可为每个阶段指定具体节目；关闭时从所选分组随机播放。</div></div>
+      <div class="setting-main"><div class="setting-name">自由选段模式</div><div class="setting-desc">开启后可指定具体节目；关闭时，连续作品会从上次集数续播，独立节目随机播放。</div></div>
       <button class="toggle" id="manualToggle" aria-label="自由选段模式"></button>
     </div>
     <div class="setting-row">
@@ -372,19 +393,23 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.1.0';
+const APP_VERSION='1.2.0';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
 const HISTORY_KEY='xs_history';
-const SETTINGS_KEY='xs_settings_v2';
+const SETTINGS_KEY='xs_settings_v3';
+const OLD_SETTINGS_KEY='xs_settings_v2';
 const SNAPSHOT_KEY='xs_auto_snapshots_v2';
-const SESSION_KEY='xs_session_v11';
-const MIRROR_SUFFIX='_mirror_v11';
+const SESSION_KEY='xs_session_v12';
+const MIRROR_SUFFIX='_mirror_v12';
+const COLLAPSE_KEY='xs_library_collapse_v12';
+const MIGRATION_KEY='xs_v12_migration_notice';
 const MAX_SNAPSHOTS=20;
 const DEFAULT_SETTINGS={
-  schemaVersion:11,p1Type:'duo',p1Group:'*',p1Track:'',
-  p2Type:'solo',p2Group:'*',p2Track:'',
+  schemaVersion:12,
+  p1Type:'duo',p1Artist:'*',p1Series:'*',p1Track:'',
+  p2Type:'solo',p2Artist:'*',p2Series:'*',p2Track:'',
   manualMode:false,fadeEnabled:true,denoiseOn:false,fadeMs:2500,
   totalMinutes:20,playToEnd:false,switchMinutes:1
 };
@@ -393,6 +418,7 @@ const $=id=>document.getElementById(id);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const makeId=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
+const collator=new Intl.Collator('zh-CN',{numeric:true,sensitivity:'base'});
 function parseJson(text,fallback){try{return JSON.parse(text)}catch{return fallback}}
 function readJson(key,fallback){return parseJson(localStorage.getItem(key),fallback)}
 function writeJson(key,value){localStorage.setItem(key,JSON.stringify(value))}
@@ -401,6 +427,8 @@ function readProtected(key,fallback){
   if(primary!==null)return primary;
   const mirror=readJson(key+MIRROR_SUFFIX,null);
   if(mirror!==null){writeJson(key,mirror);return mirror}
+  const legacyMirror=readJson(key+'_mirror_v11',null);
+  if(legacyMirror!==null){writeProtected(key,legacyMirror);return legacyMirror}
   return fallback;
 }
 function writeProtected(key,value){
@@ -415,6 +443,15 @@ function fmt(sec){sec=Math.max(0,Math.round(Number(sec)||0));return `${String(Ma
 function formatDuration(sec){if(!Number.isFinite(sec)||sec<=0)return '时长未知';return sec>=3600?`${Math.floor(sec/3600)}:${String(Math.floor(sec%3600/60)).padStart(2,'0')}:${String(Math.round(sec%60)).padStart(2,'0')}`:fmt(sec)}
 function formatBytes(n){if(!Number.isFinite(n))return '';const u=['B','KB','MB','GB'];let i=0;while(n>=1024&&i<u.length-1){n/=1024;i++}return `${n.toFixed(i?1:0)} ${u[i]}`}
 function typeLabel(type){return TYPE_LABEL[type]||type}
+function naturalCompare(a,b){return collator.compare(String(a||''),String(b||''))}
+function extractEpisodeNumber(title){
+  const text=String(title||'');
+  const matches=[...text.matchAll(/(?:第\s*)?(\d{1,5})(?:\s*[集回期话部章])?/g)];
+  if(!matches.length)return null;
+  const preferred=matches.find(m=>/第\s*\d+\s*[集回期话部章]/.test(m[0]));
+  return Number((preferred||matches[0])[1]);
+}
+function normalizeTitle(name){return String(name||'').replace(AUDIO_EXT,'').trim()||'未命名节目'}
 let toastTimer;
 function toast(msg,ms=2400){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),ms)}
 function openSheet(id){$(id).classList.add('show')}
@@ -422,11 +459,12 @@ function closeSheet(id){$(id).classList.remove('show')}
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeSheet(b.dataset.close));
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeSheet(o.id)}));
 
-/* ---------- IndexedDB：分组元数据与音频 Blob 分离 ---------- */
-const DB_NAME='xiangsheng-db',DB_VERSION=4;
+/* ---------- IndexedDB：类型 → 艺术家 → 作品/系列 → 节目 ---------- */
+const DB_NAME='xiangsheng-db',DB_VERSION=5;
 let dbPromise;
 function requestToPromise(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
+function ensureIndex(store,name,keyPath,options={unique:false}){if(!store.indexNames.contains(name))store.createIndex(name,keyPath,options)}
 function openDB(){
   if(dbPromise)return dbPromise;
   dbPromise=new Promise((resolve,reject)=>{
@@ -434,12 +472,15 @@ function openDB(){
     req.onupgradeneeded=e=>{
       const db=req.result,tx=req.transaction;
       let groups=db.objectStoreNames.contains('groups')?tx.objectStore('groups'):db.createObjectStore('groups',{keyPath:'id'});
-      if(!groups.indexNames.contains('type'))groups.createIndex('type','type',{unique:false});
+      ensureIndex(groups,'type','type');
       let meta=db.objectStoreNames.contains('trackMeta')?tx.objectStore('trackMeta'):db.createObjectStore('trackMeta',{keyPath:'id'});
-      if(!meta.indexNames.contains('type'))meta.createIndex('type','type',{unique:false});
-      if(!meta.indexNames.contains('groupId'))meta.createIndex('groupId','groupId',{unique:false});
-      if(!meta.indexNames.contains('fingerprint'))meta.createIndex('fingerprint','fingerprint',{unique:false});
-      const blobs=db.objectStoreNames.contains('trackBlob')?tx.objectStore('trackBlob'):db.createObjectStore('trackBlob',{keyPath:'id'});
+      ensureIndex(meta,'type','type');ensureIndex(meta,'groupId','groupId');ensureIndex(meta,'fingerprint','fingerprint');
+      ensureIndex(meta,'artistId','artistId');ensureIndex(meta,'seriesId','seriesId');
+      if(!db.objectStoreNames.contains('trackBlob'))db.createObjectStore('trackBlob',{keyPath:'id'});
+      let artists=db.objectStoreNames.contains('artists')?tx.objectStore('artists'):db.createObjectStore('artists',{keyPath:'id'});
+      ensureIndex(artists,'type','type');
+      let series=db.objectStoreNames.contains('series')?tx.objectStore('series'):db.createObjectStore('series',{keyPath:'id'});
+      ensureIndex(series,'type','type');ensureIndex(series,'artistId','artistId');ensureIndex(series,'legacyGroupId','legacyGroupId');
       if(e.oldVersion<4){
         ['duo','solo','story'].forEach(type=>{
           if(!db.objectStoreNames.contains(type))return;
@@ -450,8 +491,7 @@ function openDB(){
             const old=cursor.value||{},blob=old.blob;
             const id=makeId(),title=old.title||String(cursor.key);
             meta.put({id,type,groupId,title,size:blob?.size||0,duration:0,createdAt:Date.now(),fingerprint:`legacy|${type}|${title}|${blob?.size||0}`});
-            blobs.put({id,blob});
-            cursor.continue();
+            tx.objectStore('trackBlob').put({id,blob});cursor.continue();
           };
         });
       }
@@ -463,643 +503,501 @@ function openDB(){
 }
 async function getAll(store){const db=await openDB(),tx=db.transaction(store,'readonly');return requestToPromise(tx.objectStore(store).getAll())}
 async function getBlob(id){const db=await openDB(),tx=db.transaction('trackBlob','readonly');return requestToPromise(tx.objectStore('trackBlob').get(id))}
-async function putGroup(group){const db=await openDB(),tx=db.transaction('groups','readwrite');tx.objectStore('groups').put(group);await txDone(tx)}
-async function createGroup(type,name){
-  name=String(name||'').trim();
-  if(!name)throw new Error('分组名称不能为空');
-  const exists=library.groups.find(g=>g.type===type&&g.name.toLowerCase()===name.toLowerCase());
-  if(exists)return exists;
-  const group={id:makeId(),type,name,createdAt:Date.now()};
-  await putGroup(group);library.groups.push(group);return group;
+async function putRecord(store,value){const db=await openDB(),tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value);await txDone(tx)}
+async function deleteRecords(stores,work){const db=await openDB(),tx=db.transaction(stores,'readwrite');work(tx);await txDone(tx)}
+
+const library={artists:[],series:[],tracks:[],groups:[]};
+function unknownArtistId(type){return `v12-unknown-${type}`}
+function legacySeriesId(groupId){return `v12-series-${groupId}`}
+function defaultSeriesMode(type){return type==='duo'?'independent':'sequential'}
+async function ensureV12Migration(){
+  const [artists,series,tracks,groups]=await Promise.all([getAll('artists'),getAll('series'),getAll('trackMeta'),getAll('groups')]);
+  const artistMap=new Map(artists.map(x=>[x.id,x])),seriesMap=new Map(series.map(x=>[x.id,x]));
+  const db=await openDB(),tx=db.transaction(['artists','series','trackMeta'],'readwrite');
+  const aStore=tx.objectStore('artists'),sStore=tx.objectStore('series'),tStore=tx.objectStore('trackMeta');
+  let changed=false;
+  for(const type of ['duo','solo','story']){
+    const id=unknownArtistId(type);
+    if(!artistMap.has(id)){
+      const a={id,type,name:'未设置艺术家',createdAt:Date.now(),system:true};
+      aStore.put(a);artistMap.set(id,a);changed=true;
+    }
+  }
+  for(const group of groups){
+    const id=legacySeriesId(group.id);
+    if(!seriesMap.has(id)){
+      const s={id,type:group.type,artistId:unknownArtistId(group.type),name:group.name||'未分类作品',playMode:defaultSeriesMode(group.type),currentTrackId:null,createdAt:group.createdAt||Date.now(),legacyGroupId:group.id};
+      sStore.put(s);seriesMap.set(id,s);changed=true;
+    }
+  }
+  const fallbackByType={};
+  for(const track of tracks){
+    if(track.artistId&&track.seriesId)continue;
+    const type=track.type||'solo';
+    let seriesId=track.groupId?legacySeriesId(track.groupId):fallbackByType[type];
+    if(!seriesId||!seriesMap.has(seriesId)){
+      seriesId=`v12-fallback-${type}`;fallbackByType[type]=seriesId;
+      if(!seriesMap.has(seriesId)){
+        const s={id:seriesId,type,artistId:unknownArtistId(type),name:'未分类作品',playMode:defaultSeriesMode(type),currentTrackId:null,createdAt:Date.now(),legacyGroupId:null};
+        sStore.put(s);seriesMap.set(seriesId,s);changed=true;
+      }
+    }
+    const updated={...track,artistId:unknownArtistId(type),seriesId,episodeNumber:track.episodeNumber??extractEpisodeNumber(track.title),order:Number.isFinite(track.order)?track.order:(track.createdAt||Date.now()),completed:!!track.completed,lastPosition:Number(track.lastPosition)||0};
+    tStore.put(updated);changed=true;
+  }
+  await txDone(tx);
+  return changed;
 }
-async function renameGroup(groupId,name){
-  const group=library.groups.find(g=>g.id===groupId);if(!group)return;
-  name=String(name||'').trim();if(!name)return;
-  group.name=name;await putGroup(group);await refreshLibrary();
+
+async function refreshLibrary(){
+  [library.artists,library.series,library.tracks,library.groups]=await Promise.all([getAll('artists'),getAll('series'),getAll('trackMeta'),getAll('groups')]);
+  library.artists.sort((a,b)=>naturalCompare(a.name,b.name));
+  library.series.sort((a,b)=>naturalCompare(a.name,b.name));
+  library.tracks.sort(trackSort);
+  renderLibrary();updateModeUI();updateStorageInfo();
+}
+function trackSort(a,b){
+  const oa=Number.isFinite(a.order)?a.order:Number.MAX_SAFE_INTEGER,ob=Number.isFinite(b.order)?b.order:Number.MAX_SAFE_INTEGER;
+  if(oa!==ob)return oa-ob;
+  const ea=Number.isFinite(a.episodeNumber)?a.episodeNumber:Number.MAX_SAFE_INTEGER,eb=Number.isFinite(b.episodeNumber)?b.episodeNumber:Number.MAX_SAFE_INTEGER;
+  if(ea!==eb)return ea-eb;
+  return naturalCompare(a.title,b.title);
+}
+function artistName(id){return library.artists.find(a=>a.id===id)?.name||'未设置艺术家'}
+function seriesName(id){return library.series.find(s=>s.id===id)?.name||'未分类作品'}
+function getSeries(id){return library.series.find(s=>s.id===id)||null}
+function artistsFor(type){return library.artists.filter(a=>a.type===type)}
+function seriesFor(type,artistId='*'){
+  return library.series.filter(s=>s.type===type&&(artistId==='*'||s.artistId===artistId));
+}
+function tracksFor(type,artistId='*',seriesId='*'){
+  return library.tracks.filter(t=>t.type===type&&(artistId==='*'||t.artistId===artistId)&&(seriesId==='*'||t.seriesId===seriesId)).sort(trackSort);
+}
+async function createArtist(type,name){
+  name=String(name||'').trim();if(!name)throw new Error('艺术家名称不能为空');
+  const exists=library.artists.find(a=>a.type===type&&a.name.toLowerCase()===name.toLowerCase());if(exists)return exists;
+  const artist={id:makeId(),type,name,createdAt:Date.now()};await putRecord('artists',artist);return artist;
+}
+async function createSeries(type,artistId,name,playMode=defaultSeriesMode(type)){
+  name=String(name||'').trim();if(!name)throw new Error('作品名称不能为空');
+  if(!library.artists.some(a=>a.id===artistId))throw new Error('请先选择艺术家');
+  const exists=library.series.find(s=>s.artistId===artistId&&s.name.toLowerCase()===name.toLowerCase());if(exists)return exists;
+  const item={id:makeId(),type,artistId,name,playMode,currentTrackId:null,createdAt:Date.now()};await putRecord('series',item);return item;
+}
+async function renameArtist(id,name){const a=library.artists.find(x=>x.id===id);if(!a)return;name=String(name||'').trim();if(!name)return;a.name=name;await putRecord('artists',a);await refreshLibrary()}
+async function renameSeries(id,name){const s=getSeries(id);if(!s)return;name=String(name||'').trim();if(!name)return;s.name=name;await putRecord('series',s);await refreshLibrary()}
+async function toggleSeriesMode(id){const s=getSeries(id);if(!s)return;s.playMode=s.playMode==='sequential'?'independent':'sequential';await putRecord('series',s);await refreshLibrary();toast(s.playMode==='sequential'?'已设为连续剧集':'已设为独立节目')}
+async function moveSeries(id,newArtistId){
+  const s=getSeries(id);if(!s||s.artistId===newArtistId)return;
+  s.artistId=newArtistId;
+  const affected=library.tracks.filter(t=>t.seriesId===id);
+  const db=await openDB(),tx=db.transaction(['series','trackMeta'],'readwrite');tx.objectStore('series').put(s);
+  affected.forEach(t=>tx.objectStore('trackMeta').put({...t,artistId:newArtistId}));await txDone(tx);await refreshLibrary();
 }
 async function deleteTrack(id){
-  const db=await openDB(),tx=db.transaction(['trackMeta','trackBlob'],'readwrite');
-  tx.objectStore('trackMeta').delete(id);tx.objectStore('trackBlob').delete(id);await txDone(tx);
-  await refreshLibrary();
+  await deleteRecords(['trackMeta','trackBlob'],tx=>{tx.objectStore('trackMeta').delete(id);tx.objectStore('trackBlob').delete(id)});await refreshLibrary();
 }
-async function deleteGroup(groupId){
-  const tracks=library.tracks.filter(t=>t.groupId===groupId);
-  const db=await openDB(),tx=db.transaction(['groups','trackMeta','trackBlob'],'readwrite');
-  tx.objectStore('groups').delete(groupId);
-  tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)});
-  await txDone(tx);await refreshLibrary();
+async function deleteSeries(id){
+  const tracks=library.tracks.filter(t=>t.seriesId===id);
+  await deleteRecords(['series','trackMeta','trackBlob'],tx=>{tx.objectStore('series').delete(id);tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)})});await refreshLibrary();
 }
+async function deleteArtist(id){
+  const series=library.series.filter(s=>s.artistId===id),ids=new Set(series.map(s=>s.id)),tracks=library.tracks.filter(t=>ids.has(t.seriesId));
+  await deleteRecords(['artists','series','trackMeta','trackBlob'],tx=>{tx.objectStore('artists').delete(id);series.forEach(s=>tx.objectStore('series').delete(s.id));tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)})});await refreshLibrary();
+}
+async function updateTrackMeta(meta){await putRecord('trackMeta',meta)}
+async function updateSeriesMeta(series){await putRecord('series',series)}
 function probeDuration(file){
   return new Promise(resolve=>{
-    const audio=document.createElement('audio'),url=URL.createObjectURL(file);
-    let done=false;
+    const audio=document.createElement('audio'),url=URL.createObjectURL(file);let done=false;
     const finish=v=>{if(done)return;done=true;URL.revokeObjectURL(url);audio.removeAttribute('src');resolve(Number.isFinite(v)?v:0)};
-    audio.preload='metadata';audio.onloadedmetadata=()=>finish(audio.duration);audio.onerror=()=>finish(0);
-    setTimeout(()=>finish(0),6000);audio.src=url;
+    audio.preload='metadata';audio.onloadedmetadata=()=>finish(audio.duration);audio.onerror=()=>finish(0);setTimeout(()=>finish(0),6000);audio.src=url;
   });
 }
-async function addFiles(type,groupId,files){
-  const valid=[...files].filter(f=>AUDIO_EXT.test(f.name)||f.type.startsWith('audio/')||f.type.startsWith('video/'));
+async function addFiles(type,artistId,seriesId,files){
+  const valid=[...files].filter(f=>AUDIO_EXT.test(f.name)||f.type.startsWith('audio/')||f.type.startsWith('video/')).sort((a,b)=>naturalCompare(a.name,b.name));
   if(!valid.length){toast('没有识别到可播放的音频文件');return}
-  const existing=new Set(library.tracks.map(t=>t.fingerprint));
-  const prepared=[];let skipped=0;
-  $('importProgress').classList.add('show');
+  const existing=new Set(library.tracks.map(t=>t.fingerprint)),current=library.tracks.filter(t=>t.seriesId===seriesId),maxOrder=current.reduce((m,t)=>Math.max(m,Number(t.order)||0),0);
+  const prepared=[];let skipped=0;$('importProgress').classList.add('show');
   for(let i=0;i<valid.length;i++){
-    const file=valid[i],fingerprint=`${type}|${groupId}|${file.name}|${file.size}|${file.lastModified||0}`;
+    const file=valid[i],fingerprint=`${type}|${seriesId}|${file.name}|${file.size}|${file.lastModified||0}`;
     $('importProgress').textContent=`正在分析 ${i+1}/${valid.length}：${file.name}`;
     if(existing.has(fingerprint)){skipped++;continue}
-    const duration=await probeDuration(file);
-    prepared.push({meta:{id:makeId(),type,groupId,title:file.name.replace(AUDIO_EXT,''),size:file.size,duration,createdAt:Date.now(),fingerprint},blob:file});
+    const duration=await probeDuration(file),title=normalizeTitle(file.name);
+    prepared.push({meta:{id:makeId(),type,artistId,seriesId,title,size:file.size,duration,createdAt:Date.now(),fingerprint,episodeNumber:extractEpisodeNumber(title),order:maxOrder+prepared.length+1,completed:false,lastPosition:0,lastPlayedAt:0},blob:file});
     existing.add(fingerprint);
   }
   if(prepared.length){
-    const db=await openDB(),tx=db.transaction(['trackMeta','trackBlob'],'readwrite');
-    prepared.forEach(x=>{tx.objectStore('trackMeta').put(x.meta);tx.objectStore('trackBlob').put({id:x.meta.id,blob:x.blob})});
-    await txDone(tx);
+    const db=await openDB(),tx=db.transaction(['trackMeta','trackBlob'],'readwrite');prepared.forEach(x=>{tx.objectStore('trackMeta').put(x.meta);tx.objectStore('trackBlob').put({id:x.meta.id,blob:x.blob})});await txDone(tx);
   }
-  $('importProgress').classList.remove('show');
-  await refreshLibrary();
-  createSnapshot('library-import');
-  toast(`已导入 ${prepared.length} 段${skipped?`，跳过 ${skipped} 个重复文件`:''}`);
-}
-const library={groups:[],tracks:[]};
-async function refreshLibrary(){
-  [library.groups,library.tracks]=await Promise.all([getAll('groups'),getAll('trackMeta')]);
-  library.groups.sort((a,b)=>a.createdAt-b.createdAt||a.name.localeCompare(b.name,'zh-CN'));
-  library.tracks.sort((a,b)=>a.createdAt-b.createdAt||a.title.localeCompare(b.title,'zh-CN'));
-  renderLibrary();updateModeUI();updateStorageInfo();
+  $('importProgress').classList.remove('show');await refreshLibrary();createSnapshot('library-import');
+  toast(`已导入 ${prepared.length} 集${skipped?`，跳过 ${skipped} 个重复文件`:''}`);
 }
 
 /* ---------- 设置与主界面 ---------- */
-let settings={...DEFAULT_SETTINGS,...readJson(SETTINGS_KEY,{})};
-settings.schemaVersion=11;
-function saveSettings(){
-  writeJson(SETTINGS_KEY,settings);
-  updateModeUI();
+const oldSettings=readJson(OLD_SETTINGS_KEY,{});
+let settings={...DEFAULT_SETTINGS,...oldSettings,...readJson(SETTINGS_KEY,{})};
+settings.schemaVersion=12;
+function saveSettings(){writeJson(SETTINGS_KEY,settings);updateModeUI()}
+async function migrateSettingsV11(){
+  if(readJson(SETTINGS_KEY,null))return;
+  for(const phase of [1,2]){
+    const group=oldSettings[`p${phase}Group`];
+    if(group&&group!=='*'){
+      const s=library.series.find(x=>x.legacyGroupId===group||x.id===legacySeriesId(group));
+      if(s){settings[`p${phase}Artist`]=s.artistId;settings[`p${phase}Series`]=s.id}
+    }
+  }
+  saveSettings();
 }
-function tracksFor(type,groupId='*'){
-  return library.tracks.filter(t=>t.type===type&&(groupId==='*'||t.groupId===groupId));
-}
-function groupName(groupId){return library.groups.find(g=>g.id===groupId)?.name||'未分类'}
-function populateGroupSelect(phase){
-  const type=settings[`p${phase}Type`],select=$(`phase${phase}Group`);
-  select.innerHTML='';
+function populateArtistSelect(phase){
+  const type=settings[`p${phase}Type`],select=$(`phase${phase}Artist`);select.innerHTML='';
   if(type==='none'){select.disabled=true;return}
-  select.disabled=false;
-  select.add(new Option('全部艺术家 / 专辑','*'));
-  library.groups.filter(g=>g.type===type).forEach(g=>select.add(new Option(g.name,g.id)));
-  let value=settings[`p${phase}Group`];
-  if(![...select.options].some(o=>o.value===value))value='*';
-  select.value=value;settings[`p${phase}Group`]=value;
+  select.disabled=false;select.add(new Option('全部艺术家','*'));artistsFor(type).forEach(a=>select.add(new Option(a.name,a.id)));
+  let value=settings[`p${phase}Artist`];if(![...select.options].some(o=>o.value===value))value='*';select.value=value;settings[`p${phase}Artist`]=value;
+}
+function populateSeriesSelect(phase){
+  const type=settings[`p${phase}Type`],artist=settings[`p${phase}Artist`],select=$(`phase${phase}Series`);select.innerHTML='';
+  if(type==='none'){select.disabled=true;return}
+  select.disabled=false;select.add(new Option('全部作品 / 系列','*'));
+  seriesFor(type,artist).forEach(s=>select.add(new Option(`${s.name}${s.playMode==='sequential'?' · 连续':''}`,s.id)));
+  let value=settings[`p${phase}Series`];if(![...select.options].some(o=>o.value===value))value='*';select.value=value;settings[`p${phase}Series`]=value;
 }
 function populateTrackSelect(phase){
-  const type=settings[`p${phase}Type`],group=settings[`p${phase}Group`],select=$(`phase${phase}Track`);
-  select.innerHTML='';
+  const type=settings[`p${phase}Type`],artist=settings[`p${phase}Artist`],series=settings[`p${phase}Series`],select=$(`phase${phase}Track`);select.innerHTML='';
   if(type==='none'){select.disabled=true;return}
   select.disabled=false;select.add(new Option('请选择具体节目',''));
-  tracksFor(type,group).forEach(t=>select.add(new Option(t.title,t.id)));
-  let value=settings[`p${phase}Track`];
-  if(![...select.options].some(o=>o.value===value))value='';
-  select.value=value;settings[`p${phase}Track`]=value;
+  tracksFor(type,artist,series).forEach(t=>select.add(new Option(`${Number.isFinite(t.episodeNumber)?`第${t.episodeNumber}集 · `:''}${t.title}`,t.id)));
+  let value=settings[`p${phase}Track`];if(![...select.options].some(o=>o.value===value))value='';select.value=value;settings[`p${phase}Track`]=value;
 }
 function updateModeUI(){
   [1,2].forEach(phase=>{
-    const type=settings[`p${phase}Type`];
-    document.querySelectorAll(`[data-phase="${phase}"]`).forEach(b=>b.classList.toggle('active',b.dataset.type===type));
-    populateGroupSelect(phase);populateTrackSelect(phase);
-    const count=type==='none'?0:tracksFor(type,settings[`p${phase}Group`]).length;
-    $(`badge${phase}`).textContent=type==='none'?'不播放':`${count} 段可用`;
+    const type=settings[`p${phase}Type`];document.querySelectorAll(`[data-phase="${phase}"]`).forEach(b=>b.classList.toggle('active',b.dataset.type===type));
+    populateArtistSelect(phase);populateSeriesSelect(phase);populateTrackSelect(phase);
+    const count=type==='none'?0:tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`]).length;
+    const s=getSeries(settings[`p${phase}Series`]);$(`badge${phase}`).textContent=type==='none'?'不播放':`${count} 集${s?.playMode==='sequential'?' · 连续':''}`;
     $(`phase${phase}TrackRow`).style.display=settings.manualMode&&type!=='none'?'grid':'none';
   });
-  $('phase2GroupRow').style.display=settings.p2Type==='none'?'none':'grid';
-  const mixed=settings.p2Type!=='none';
-  $('switchRow').classList.toggle('show',mixed&&!settings.playToEnd);
-  $('switchSlider').max=Math.max(1,(settings.totalMinutes||20)-1);
-  settings.switchMinutes=clamp(Number(settings.switchMinutes)||1,1,Number($('switchSlider').max));
+  const p2None=settings.p2Type==='none';$('phase2ArtistRow').style.display=p2None?'none':'grid';$('phase2SeriesRow').style.display=p2None?'none':'grid';
+  const mixed=!p2None;$('switchRow').classList.toggle('show',mixed&&!settings.playToEnd);
+  $('switchSlider').max=Math.max(1,(settings.totalMinutes||20)-1);settings.switchMinutes=clamp(Number(settings.switchMinutes)||1,1,Number($('switchSlider').max));
   $('switchSlider').value=settings.switchMinutes;$('switchText').textContent=`${settings.switchMinutes} 分钟`;
-  $('phase1Group').value=settings.p1Group;$('phase2Group').value=settings.p2Group;
-  $('manualToggle').classList.toggle('on',settings.manualMode);
-  $('fadeToggle').classList.toggle('on',settings.fadeEnabled);
-  $('denoiseToggle').classList.toggle('on',settings.denoiseOn);
-  $('fadeDuration').value=String(settings.fadeMs);
-  document.querySelectorAll('#timerGrid .pill').forEach(b=>{
-    const m=b.dataset.min;
-    const active=settings.playToEnd?m==='-1':Number(m)===Number(settings.totalMinutes);
-    b.classList.toggle('active',active);
-  });
-  $('totalText').textContent=settings.playToEnd?'--:--':fmt(settings.totalMinutes*60);
-  updateStartButton();
+  $('manualToggle').classList.toggle('on',settings.manualMode);$('fadeToggle').classList.toggle('on',settings.fadeEnabled);$('denoiseToggle').classList.toggle('on',settings.denoiseOn);$('fadeDuration').value=String(settings.fadeMs);
+  document.querySelectorAll('#timerGrid .pill').forEach(b=>{const m=b.dataset.min;b.classList.toggle('active',settings.playToEnd?m==='-1':Number(m)===Number(settings.totalMinutes))});
+  $('totalText').textContent=settings.playToEnd?'--:--':fmt(settings.totalMinutes*60);updateStartButton();
 }
 document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
-  const phase=Number(btn.dataset.phase),type=btn.dataset.type;
-  settings[`p${phase}Type`]=type;settings[`p${phase}Group`]='*';settings[`p${phase}Track`]='';
-  saveSettings();
+  const phase=Number(btn.dataset.phase),type=btn.dataset.type;settings[`p${phase}Type`]=type;settings[`p${phase}Artist`]='*';settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings();
 });
 [1,2].forEach(phase=>{
-  $(`phase${phase}Group`).onchange=e=>{settings[`p${phase}Group`]=e.target.value;settings[`p${phase}Track`]='';saveSettings()};
+  $(`phase${phase}Artist`).onchange=e=>{settings[`p${phase}Artist`]=e.target.value;settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings()};
+  $(`phase${phase}Series`).onchange=e=>{settings[`p${phase}Series`]=e.target.value;settings[`p${phase}Track`]='';saveSettings()};
   $(`phase${phase}Track`).onchange=e=>{settings[`p${phase}Track`]=e.target.value;saveSettings()};
 });
-$('switchSlider').oninput=e=>{$('switchText').textContent=`${e.target.value} 分钟`};
+$('switchSlider').oninput=e=>$('switchText').textContent=`${e.target.value} 分钟`;
 $('switchSlider').onchange=e=>{settings.switchMinutes=Number(e.target.value);saveSettings()};
 $('timerGrid').onclick=e=>{
-  const btn=e.target.closest('.pill');if(!btn)return;
-  const raw=btn.dataset.min;
+  const btn=e.target.closest('.pill');if(!btn)return;const raw=btn.dataset.min;
   if(raw==='custom'){
-    const val=prompt('请输入定时时长（分钟）',String(settings.totalMinutes||45));
-    if(val===null)return;const n=Number(val);if(!Number.isFinite(n)||n<=0){toast('请输入大于 0 的分钟数');return}
+    const val=prompt('请输入定时时长（分钟）',String(settings.totalMinutes||45));if(val===null)return;const n=Number(val);if(!Number.isFinite(n)||n<=0){toast('请输入大于 0 的分钟数');return}
     settings.totalMinutes=n;settings.playToEnd=false;btn.textContent=`${n} 分钟`;
-  }else if(raw==='-1'){settings.playToEnd=true}
-  else{settings.totalMinutes=Number(raw);settings.playToEnd=false}
-  if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes)settings.switchMinutes=Math.max(1,settings.totalMinutes-1);
-  saveSettings();
+  }else if(raw==='-1')settings.playToEnd=true;else{settings.totalMinutes=Number(raw);settings.playToEnd=false}
+  if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes)settings.switchMinutes=Math.max(1,settings.totalMinutes-1);saveSettings();
 };
-$('configToggle').onclick=()=>{
-  const p=$('configPanel');p.classList.toggle('collapsed');$('configToggle').textContent=p.classList.contains('collapsed')?'展开':'收起';
-};
+$('configToggle').onclick=()=>{const p=$('configPanel');p.classList.toggle('collapsed');$('configToggle').textContent=p.classList.contains('collapsed')?'展开':'收起'};
 $('manualToggle').onclick=()=>{settings.manualMode=!settings.manualMode;saveSettings()};
 $('fadeToggle').onclick=()=>{settings.fadeEnabled=!settings.fadeEnabled;saveSettings()};
 $('denoiseToggle').onclick=()=>{settings.denoiseOn=!settings.denoiseOn;saveSettings();applyAudioPreset()};
 $('fadeDuration').onchange=e=>{settings.fadeMs=Number(e.target.value);saveSettings()};
 
-/* ---------- 资料库界面 ---------- */
-let activeLibType='duo',pendingImport={type:null,groupId:null};
+/* ---------- 资料库：艺术家和作品双层折叠 ---------- */
+let activeLibType='duo',pendingImport={type:null,artistId:null,seriesId:null};
+let collapseState=readJson(COLLAPSE_KEY,{artists:{},series:{}});
+if(!collapseState.artists)collapseState.artists={};if(!collapseState.series)collapseState.series={};
+function saveCollapse(){writeJson(COLLAPSE_KEY,collapseState)}
+function artistCollapsed(id){return collapseState.artists[id]===true}
+function seriesCollapsed(id){return collapseState.series[id]!==false}
+function setArtistCollapsed(id,value){collapseState.artists[id]=value;saveCollapse()}
+function setSeriesCollapsed(id,value){collapseState.series[id]=value;saveCollapse()}
+function makeTiny(text,handler,cls=''){const b=document.createElement('button');b.className=`tiny ${cls}`.trim();b.textContent=text;b.onclick=e=>{e.stopPropagation();handler(e)};return b}
 function renderLibrary(){
   document.querySelectorAll('#libraryTabs .tab').forEach(b=>b.classList.toggle('active',b.dataset.type===activeLibType));
   const q=$('librarySearch').value.trim().toLowerCase(),container=$('groupContainer');container.innerHTML='';
-  const groups=library.groups.filter(g=>g.type===activeLibType).filter(g=>{
+  const visibleArtists=artistsFor(activeLibType).filter(a=>{
     if(!q)return true;
-    return g.name.toLowerCase().includes(q)||library.tracks.some(t=>t.groupId===g.id&&t.title.toLowerCase().includes(q));
+    if(a.name.toLowerCase().includes(q))return true;
+    const sids=new Set(library.series.filter(s=>s.artistId===a.id&&(s.name.toLowerCase().includes(q)||library.tracks.some(t=>t.seriesId===s.id&&t.title.toLowerCase().includes(q)))).map(s=>s.id));
+    return sids.size>0;
   });
-  if(!groups.length){
-    const empty=document.createElement('div');empty.className='empty';
-    empty.textContent=q?'没有找到匹配内容':'还没有分组。可以新建“漕运经”“王玥波”等艺术家或专辑分组。';
-    container.appendChild(empty);return;
-  }
-  groups.forEach(group=>{
-    const all=library.tracks.filter(t=>t.groupId===group.id);
-    const tracks=q?all.filter(t=>t.title.toLowerCase().includes(q)||group.name.toLowerCase().includes(q)):all;
-    const card=document.createElement('div');card.className='group-card';
-    const head=document.createElement('div');head.className='group-head';
-    const name=document.createElement('div');name.className='group-name';name.textContent=group.name;
-    const count=document.createElement('span');count.className='group-count';count.textContent=`${all.length} 段`;
-    const actions=document.createElement('div');actions.className='group-actions';
-    const add=makeTiny('＋音频',()=>chooseFiles(group.type,group.id));
-    const rename=makeTiny('改名',async()=>{const n=prompt('新的艺术家/专辑名称',group.name);if(n)await renameGroup(group.id,n)});
-    const del=makeTiny('删除',async()=>{
-      if(!confirm(`删除“${group.name}”及其中 ${all.length} 段音频？\n此操作无法通过统计快照恢复音频文件。`))return;
-      createSnapshot('before-group-delete');await deleteGroup(group.id);toast('分组已删除');
-    });
-    actions.append(add,rename,del);head.append(name,count,actions);card.appendChild(head);
-    const list=document.createElement('div');list.className='track-list';
-    if(!tracks.length){const emp=document.createElement('div');emp.className='empty';emp.style.padding='14px';emp.textContent='分组内暂无音频';list.appendChild(emp)}
-    tracks.forEach(track=>{
-      const row=document.createElement('div');row.className='track';
-      const main=document.createElement('div');main.className='track-main';
-      const title=document.createElement('div');title.className='track-title';title.textContent=track.title;
-      const meta=document.createElement('div');meta.className='track-meta';meta.textContent=`${formatDuration(track.duration)} · ${formatBytes(track.size)}`;
-      main.append(title,meta);
-      const acts=document.createElement('div');acts.className='track-actions';
-      acts.append(makeTiny('开场',()=>assignTrack(1,track)),makeTiny('收尾',()=>assignTrack(2,track)),makeTiny('删',async()=>{
-        if(confirm(`删除《${track.title}》？`)){await deleteTrack(track.id);toast('节目已删除')}
-      }));
-      row.append(main,acts);list.appendChild(row);
-    });
-    card.appendChild(list);container.appendChild(card);
+  if(!visibleArtists.length){const e=document.createElement('div');e.className='empty';e.textContent=q?'没有找到匹配内容':'还没有艺术家。先新建艺术家，再在艺术家下创建作品并导入音频。';container.appendChild(e);return}
+  visibleArtists.forEach(artist=>{
+    const artistSeries=library.series.filter(s=>s.artistId===artist.id).filter(s=>!q||artist.name.toLowerCase().includes(q)||s.name.toLowerCase().includes(q)||library.tracks.some(t=>t.seriesId===s.id&&t.title.toLowerCase().includes(q)));
+    const artistCard=document.createElement('section');artistCard.className='artist-card';
+    const aHead=document.createElement('div');aHead.className='artist-head';
+    const arrow=document.createElement('span');arrow.className='collapse-arrow';arrow.textContent=(q||!artistCollapsed(artist.id))?'▼':'▶';
+    const aName=document.createElement('div');aName.className='artist-name';aName.textContent=artist.name;
+    const totalTracks=library.tracks.filter(t=>t.artistId===artist.id).length;
+    const aCount=document.createElement('span');aCount.className='group-count';aCount.textContent=`${artistSeries.length} 部 · ${totalTracks} 集`;
+    const aActions=document.createElement('div');aActions.className='group-actions';
+    aActions.append(
+      makeTiny('＋作品',()=>newSeriesForArtist(artist)),
+      makeTiny('改名',async()=>{const n=prompt('新的艺术家名称',artist.name);if(n)await renameArtist(artist.id,n)}),
+      makeTiny('删除',async()=>{if(artist.system){toast('系统艺术家不可直接删除，可改名或移动作品');return}if(confirm(`删除艺术家“${artist.name}”及其全部 ${totalTracks} 集音频？\n音频删除后无法通过统计备份恢复。`)){createSnapshot('before-artist-delete');await deleteArtist(artist.id);toast('艺术家已删除')}})
+    );
+    aHead.append(arrow,aName,aCount,aActions);aHead.onclick=()=>{const next=!artistCollapsed(artist.id);setArtistCollapsed(artist.id,next);renderLibrary()};artistCard.appendChild(aHead);
+    const seriesList=document.createElement('div');seriesList.className='series-list';if(!q&&artistCollapsed(artist.id))seriesList.classList.add('collapsed');
+    if(!artistSeries.length){const e=document.createElement('div');e.className='empty compact';e.textContent='暂无作品，点击“＋作品”创建';seriesList.appendChild(e)}
+    artistSeries.forEach(series=>seriesList.appendChild(renderSeriesCard(series,q)));
+    artistCard.appendChild(seriesList);container.appendChild(artistCard);
   });
 }
-function makeTiny(text,handler){const b=document.createElement('button');b.className='tiny';b.textContent=text;b.onclick=handler;return b}
+function renderSeriesCard(series,q){
+  const all=library.tracks.filter(t=>t.seriesId===series.id).sort(trackSort),tracks=q?all.filter(t=>t.title.toLowerCase().includes(q)||series.name.toLowerCase().includes(q)||artistName(series.artistId).toLowerCase().includes(q)):all;
+  const done=all.filter(t=>t.completed).length,totalDuration=all.reduce((s,t)=>s+(Number(t.duration)||0),0);
+  const card=document.createElement('div');card.className='series-card';if(session.has&&activeRuntime().meta?.seriesId===series.id)card.classList.add('current-series');
+  const head=document.createElement('div');head.className='series-head';
+  const arrow=document.createElement('span');arrow.className='collapse-arrow';arrow.textContent=(q||!seriesCollapsed(series.id))?'▼':'▶';
+  const main=document.createElement('div');main.className='series-main';
+  const name=document.createElement('div');name.className='series-name';name.textContent=series.name;
+  const meta=document.createElement('div');meta.className='series-meta';meta.textContent=`${all.length} 集 · ${done} 已听${totalDuration?` · ${formatDuration(totalDuration)}`:''}`;
+  main.append(name,meta);
+  const mode=document.createElement('span');mode.className=`mode-badge ${series.playMode}`;mode.textContent=series.playMode==='sequential'?'连续':'独立';
+  const actions=document.createElement('div');actions.className='group-actions';
+  actions.append(
+    makeTiny('＋音频',()=>chooseFiles(series.type,series.artistId,series.id)),
+    makeTiny(series.playMode==='sequential'?'连续':'独立',()=>toggleSeriesMode(series.id)),
+    makeTiny('更多',()=>seriesMenu(series))
+  );
+  head.append(arrow,main,mode,actions);head.onclick=()=>{const next=!seriesCollapsed(series.id);setSeriesCollapsed(series.id,next);renderLibrary()};card.appendChild(head);
+  const list=document.createElement('div');list.className='track-list';if(!q&&seriesCollapsed(series.id))list.classList.add('collapsed');
+  if(!tracks.length){const e=document.createElement('div');e.className='empty compact';e.textContent='作品内暂无音频';list.appendChild(e)}
+  tracks.forEach((track,index)=>{
+    const row=document.createElement('div');row.className=`track${track.completed?' completed':''}`;
+    const number=document.createElement('span');number.className='episode-no';number.textContent=Number.isFinite(track.episodeNumber)?String(track.episodeNumber).padStart(2,'0'):String(index+1).padStart(2,'0');
+    const tMain=document.createElement('div');tMain.className='track-main';
+    const title=document.createElement('div');title.className='track-title';title.textContent=track.title;
+    const progress=track.lastPosition>5&&track.duration>0?` · 已听 ${Math.round(track.lastPosition/track.duration*100)}%`:'';
+    const tMeta=document.createElement('div');tMeta.className='track-meta';tMeta.textContent=`${formatDuration(track.duration)} · ${formatBytes(track.size)}${track.completed?' · 已听完':progress}`;
+    tMain.append(title,tMeta);
+    const acts=document.createElement('div');acts.className='track-actions';
+    acts.append(makeTiny('开场',()=>assignTrack(1,track)),makeTiny('收尾',()=>assignTrack(2,track)),makeTiny(track.completed?'未听':'已听',async()=>{track.completed=!track.completed;if(!track.completed)track.lastPosition=0;await updateTrackMeta(track);await refreshLibrary()}),makeTiny('删',async()=>{if(confirm(`删除《${track.title}》？`)){await deleteTrack(track.id);toast('节目已删除')}}));
+    row.append(number,tMain,acts);list.appendChild(row);
+  });
+  card.appendChild(list);return card;
+}
+async function newSeriesForArtist(artist){
+  const name=prompt(`在“${artist.name}”下新建作品 / 系列\n例如：张小乙下南京、漕运经`);if(!name)return;
+  try{const s=await createSeries(artist.type,artist.id,name,defaultSeriesMode(artist.type));setArtistCollapsed(artist.id,false);setSeriesCollapsed(s.id,true);await refreshLibrary();toast('作品已创建，点击“＋音频”导入节目')}
+  catch(err){toast(err.message)}
+}
+async function seriesMenu(series){
+  const choice=prompt(`作品：${series.name}\n1. 重命名\n2. 更换艺术家\n3. 从头重置收听进度\n4. 删除作品\n请输入序号`,'1');if(choice===null)return;
+  if(choice==='1'){const n=prompt('新的作品名称',series.name);if(n)await renameSeries(series.id,n)}
+  else if(choice==='2')await chooseArtistForSeries(series);
+  else if(choice==='3'){
+    if(!confirm(`清除《${series.name}》所有已听状态和续播位置？`))return;
+    const tracks=library.tracks.filter(t=>t.seriesId===series.id),db=await openDB(),tx=db.transaction(['trackMeta','series'],'readwrite');
+    tracks.forEach(t=>tx.objectStore('trackMeta').put({...t,completed:false,lastPosition:0}));tx.objectStore('series').put({...series,currentTrackId:null});await txDone(tx);await refreshLibrary();toast('作品进度已重置');
+  }else if(choice==='4'){
+    const count=library.tracks.filter(t=>t.seriesId===series.id).length;if(confirm(`删除作品“${series.name}”及其中 ${count} 集音频？`)){createSnapshot('before-series-delete');await deleteSeries(series.id);toast('作品已删除')}
+  }
+}
+async function chooseArtistForSeries(series){
+  const list=artistsFor(series.type);const text=list.map((a,i)=>`${i+1}. ${a.name}`).join('\n');const raw=prompt(`选择新的艺术家：\n${text}`);if(raw===null)return;
+  const target=list[Number(raw)-1];if(!target){toast('序号无效');return}await moveSeries(series.id,target.id);toast('作品归属已更新');
+}
 function assignTrack(phase,track){
-  settings.manualMode=true;settings[`p${phase}Type`]=track.type;settings[`p${phase}Group`]=track.groupId;settings[`p${phase}Track`]=track.id;
+  settings.manualMode=true;settings[`p${phase}Type`]=track.type;settings[`p${phase}Artist`]=track.artistId;settings[`p${phase}Series`]=track.seriesId;settings[`p${phase}Track`]=track.id;
   saveSettings();closeSheet('librarySheet');toast(`已指定为${phase===1?'开场':'收尾'}节目`);
 }
-function chooseFiles(type,groupId){pendingImport={type,groupId};$('audioInput').value='';$('audioInput').click()}
-$('audioInput').onchange=async e=>{if(e.target.files?.length)await addFiles(pendingImport.type,pendingImport.groupId,e.target.files)};
+function chooseFiles(type,artistId,seriesId){pendingImport={type,artistId,seriesId};$('audioInput').value='';$('audioInput').click()}
+$('audioInput').onchange=async e=>{if(e.target.files?.length)await addFiles(pendingImport.type,pendingImport.artistId,pendingImport.seriesId,e.target.files)};
 $('libraryTabs').onclick=e=>{const b=e.target.closest('.tab');if(!b)return;activeLibType=b.dataset.type;renderLibrary()};
 $('librarySearch').oninput=renderLibrary;
-$('newGroupBtn').onclick=async()=>{
-  const name=prompt(`为${typeLabel(activeLibType)}新建艺术家/专辑分组\n例如：漕运经、王玥波`);
-  if(!name)return;
-  try{await createGroup(activeLibType,name);await refreshLibrary();toast('分组已创建，请点击分组右侧“＋音频”导入')}
+$('newArtistBtn').onclick=async()=>{
+  const name=prompt(`为${typeLabel(activeLibType)}新建艺术家\n例如：郭德纲、王玥波`);if(!name)return;
+  try{await createArtist(activeLibType,name);await refreshLibrary();toast('艺术家已创建，请在其下新建作品')}
   catch(err){toast(err.message)}
 };
+$('collapseProgramsBtn').onclick=()=>{library.series.filter(s=>s.type===activeLibType).forEach(s=>collapseState.series[s.id]=true);saveCollapse();renderLibrary()};
+$('expandAllBtn').onclick=()=>{library.artists.filter(a=>a.type===activeLibType).forEach(a=>collapseState.artists[a.id]=false);library.series.filter(s=>s.type===activeLibType).forEach(s=>collapseState.series[s.id]=false);saveCollapse();renderLibrary()};
 async function updateStorageInfo(){
   if(!navigator.storage?.estimate){$('storageText').textContent='浏览器未提供存储容量信息';return}
-  const {usage=0,quota=0}=await navigator.storage.estimate();
-  const persisted=await navigator.storage.persisted?.();
-  $('storageText').textContent=`已用 ${formatBytes(usage)} / 可用约 ${formatBytes(quota)}${persisted?' · 已保护':''}`;
-  $('persistBtn').textContent=persisted?'已保护':'保护存储';
+  const {usage=0,quota=0}=await navigator.storage.estimate(),persisted=await navigator.storage.persisted?.();
+  $('storageText').textContent=`已用 ${formatBytes(usage)} / 可用约 ${formatBytes(quota)}${persisted?' · 已保护':''}`;$('persistBtn').textContent=persisted?'已保护':'保护存储';
 }
-$('persistBtn').onclick=async()=>{
-  if(!navigator.storage?.persist){toast('当前浏览器不支持持久化存储');return}
-  const ok=await navigator.storage.persist();await updateStorageInfo();
-  toast(ok?'已申请持久化存储，系统更不容易清理音频':'系统暂未授予持久化存储');
-};
+$('persistBtn').onclick=async()=>{if(!navigator.storage?.persist){toast('当前浏览器不支持持久化存储');return}const ok=await navigator.storage.persist();await updateStorageInfo();toast(ok?'已申请持久化存储，系统更不容易清理音频':'系统暂未授予持久化存储')};
 
 /* ---------- 统计、历史、镜像与快照 ---------- */
 function getStats(){return readProtected(STATS_KEY,{})}
 function getHistory(){return readProtected(HISTORY_KEY,[])}
-function recordPlaySeconds(seconds){
-  seconds=Number(seconds);if(!Number.isFinite(seconds)||seconds<.2)return;
-  const stats=getStats(),day=localDateStr();stats[day]=(Number(stats[day])||0)+seconds;
-  writeProtected(STATS_KEY,stats);
-}
+function recordPlaySeconds(seconds){seconds=Number(seconds);if(!Number.isFinite(seconds)||seconds<.2)return;const stats=getStats(),day=localDateStr();stats[day]=(Number(stats[day])||0)+seconds;writeProtected(STATS_KEY,stats)}
 function addHistory(meta){
-  if(!meta)return;
-  const history=getHistory(),item={
-    id:makeId(),trackId:meta.id,title:meta.title,type:meta.type,
-    group:groupName(meta.groupId),time:new Date().toISOString(),displayTime:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})
-  };
-  history.unshift(item);writeProtected(HISTORY_KEY,history.slice(0,100));
+  if(!meta)return;const history=getHistory(),item={id:makeId(),trackId:meta.id,title:meta.title,type:meta.type,artist:artistName(meta.artistId),series:seriesName(meta.seriesId),time:new Date().toISOString(),displayTime:new Date().toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'})};
+  history.unshift(item);writeProtected(HISTORY_KEY,history.slice(0,150));
 }
-function currentSnapshotData(){
-  return {stats:getStats(),history:getHistory(),settings:{...settings},createdAt:Date.now()};
-}
-function createSnapshot(reason='manual',force=false){
-  const list=readJson(SNAPSHOT_KEY,[]);
-  if(!force&&list[0]&&Date.now()-list[0].createdAt<10*60*1000)return false;
-  list.unshift({id:makeId(),reason,createdAt:Date.now(),data:currentSnapshotData()});
-  writeJson(SNAPSHOT_KEY,list.slice(0,MAX_SNAPSHOTS));updateSnapshotDesc();return true;
-}
-function ensureDailySnapshot(){
-  const list=readJson(SNAPSHOT_KEY,[]),today=localDateStr();
-  if(!list.some(s=>localDateStr(new Date(s.createdAt))===today))createSnapshot('daily',true);
-}
-function updateSnapshotDesc(){
-  const latest=readJson(SNAPSHOT_KEY,[])[0];
-  $('snapshotDesc').textContent=latest?`自动轮换保存最近 20 份；最新：${new Date(latest.createdAt).toLocaleString('zh-CN')}`:'尚无快照，播放或手动创建后会自动保存。';
-  $('backupDesc').textContent=`播放时长、热力图、历史和设置；音频不包含。${latest?`最近快照：${new Date(latest.createdAt).toLocaleString('zh-CN')}`:''}`;
-}
+function currentSnapshotData(){return {stats:getStats(),history:getHistory(),settings:{...settings},createdAt:Date.now()}}
+function createSnapshot(reason='manual',force=false){const list=readJson(SNAPSHOT_KEY,[]);if(!force&&list[0]&&Date.now()-list[0].createdAt<10*60*1000)return false;list.unshift({id:makeId(),reason,createdAt:Date.now(),data:currentSnapshotData()});writeJson(SNAPSHOT_KEY,list.slice(0,MAX_SNAPSHOTS));updateSnapshotDesc();return true}
+function ensureDailySnapshot(){const list=readJson(SNAPSHOT_KEY,[]),today=localDateStr();if(!list.some(s=>localDateStr(new Date(s.createdAt))===today))createSnapshot('daily',true)}
+function updateSnapshotDesc(){const latest=readJson(SNAPSHOT_KEY,[])[0];$('snapshotDesc').textContent=latest?`自动轮换保存最近 20 份；最新：${new Date(latest.createdAt).toLocaleString('zh-CN')}`:'尚无快照，播放或手动创建后会自动保存。';$('backupDesc').textContent=`播放时长、热力图、历史、设置和作品进度；音频文件不包含。${latest?`最近快照：${new Date(latest.createdAt).toLocaleString('zh-CN')}`:''}`}
 function restoreSnapshot(){
-  const list=readJson(SNAPSHOT_KEY,[]);
-  if(!list.length){toast('暂无可回滚的快照');return}
-  const choices=list.slice(0,10).map((s,i)=>`${i+1}. ${new Date(s.createdAt).toLocaleString('zh-CN')} · ${s.reason}`).join('\n');
-  const raw=prompt(`输入要恢复的快照序号：\n${choices}`,'1');
-  if(raw===null)return;const snap=list[Number(raw)-1];if(!snap){toast('序号无效');return}
-  createSnapshot('before-rollback',true);
-  writeProtected(STATS_KEY,snap.data.stats||{});writeProtected(HISTORY_KEY,snap.data.history||[]);
-  settings={...DEFAULT_SETTINGS,...(snap.data.settings||{})};saveSettings();renderStats();toast('快照恢复成功');
+  const list=readJson(SNAPSHOT_KEY,[]);if(!list.length){toast('暂无可回滚的快照');return}
+  const choices=list.slice(0,10).map((s,i)=>`${i+1}. ${new Date(s.createdAt).toLocaleString('zh-CN')} · ${s.reason}`).join('\n');const raw=prompt(`输入要恢复的快照序号：\n${choices}`,'1');if(raw===null)return;
+  const snap=list[Number(raw)-1];if(!snap){toast('序号无效');return}createSnapshot('before-rollback',true);writeProtected(STATS_KEY,snap.data.stats||{});writeProtected(HISTORY_KEY,snap.data.history||[]);settings={...DEFAULT_SETTINGS,...(snap.data.settings||{})};saveSettings();renderStats();toast('快照恢复成功');
 }
 function renderStats(){
-  const stats=getStats(),today=new Date(),todayKey=localDateStr(today);
-  let td=0,month=0,year=0;
-  Object.entries(stats).forEach(([date,sec])=>{
-    sec=Number(sec)||0;if(date===todayKey)td+=sec;
-    if(date.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`))month+=sec;
-    if(date.startsWith(String(today.getFullYear())))year+=sec;
-  });
+  const stats=getStats(),today=new Date(),todayKey=localDateStr(today);let td=0,month=0,year=0;
+  Object.entries(stats).forEach(([date,sec])=>{sec=Number(sec)||0;if(date===todayKey)td+=sec;if(date.startsWith(`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`))month+=sec;if(date.startsWith(String(today.getFullYear())))year+=sec});
   $('statToday').textContent=Math.round(td/60);$('statMonth').textContent=(month/3600).toFixed(1);$('statYear').textContent=(year/3600).toFixed(1);
-  let streak=0;for(let i=0;i<3650;i++){const key=localDateStr(addLocalDays(today,-i));if((stats[key]||0)>0)streak++;else if(i>0||td===0)break}
-  $('statStreak').textContent=streak;
-  const days=[];let max=1;
-  for(let i=48;i>=0;i--){const date=addLocalDays(today,-i),key=localDateStr(date),sec=Number(stats[key])||0;max=Math.max(max,sec);days.push({date,key,sec})}
-  const heat=$('heatmap');heat.innerHTML='';
-  days.forEach(d=>{
-    const cell=document.createElement('button');cell.className='heat-cell';cell.type='button';
-    const ratio=d.sec/max;let level=0;if(d.sec>0)level=ratio<.25?1:ratio<.5?2:ratio<.75?3:4;
-    cell.dataset.level=level;if(d.key===todayKey)cell.classList.add('today');
-    cell.title=`${d.key} · ${Math.round(d.sec/60)} 分钟`;
-    cell.onclick=()=>toast(`${d.key}：收听 ${Math.round(d.sec/60)} 分钟`);
-    heat.appendChild(cell);
-  });
-  const list=$('historyList');list.innerHTML='';
-  const history=getHistory();
-  if(!history.length){const e=document.createElement('div');e.className='empty';e.textContent='暂无播放记录';list.appendChild(e)}
-  history.slice(0,50).forEach(h=>{
-    const row=document.createElement('div');row.className='history-item';
-    const main=document.createElement('div');main.className='hist-main';
-    const title=document.createElement('div');title.className='hist-title';title.textContent=h.title||'未知节目';
-    const sub=document.createElement('div');sub.className='hist-sub';sub.textContent=`${h.group||'未分类'} · ${h.displayTime||new Date(h.time||Date.now()).toLocaleString('zh-CN')}`;
-    const tag=document.createElement('div');tag.className='hist-tag';tag.textContent=typeLabel(h.type);
-    main.append(title,sub);row.append(main,tag);list.appendChild(row);
-  });
+  let streak=0;for(let i=0;i<3650;i++){const key=localDateStr(addLocalDays(today,-i));if((stats[key]||0)>0)streak++;else if(i>0||td===0)break}$('statStreak').textContent=streak;
+  const days=[];let max=1;for(let i=48;i>=0;i--){const date=addLocalDays(today,-i),key=localDateStr(date),sec=Number(stats[key])||0;max=Math.max(max,sec);days.push({date,key,sec})}
+  const heat=$('heatmap');heat.innerHTML='';days.forEach(d=>{const cell=document.createElement('button');cell.className='heat-cell';cell.type='button';const ratio=d.sec/max;let level=0;if(d.sec>0)level=ratio<.25?1:ratio<.5?2:ratio<.75?3:4;cell.dataset.level=level;if(d.key===todayKey)cell.classList.add('today');cell.title=`${d.key} · ${Math.round(d.sec/60)} 分钟`;cell.onclick=()=>toast(`${d.key}：收听 ${Math.round(d.sec/60)} 分钟`);heat.appendChild(cell)});
+  const list=$('historyList');list.innerHTML='';const history=getHistory();if(!history.length){const e=document.createElement('div');e.className='empty';e.textContent='暂无播放记录';list.appendChild(e)}
+  history.slice(0,60).forEach(h=>{const row=document.createElement('div');row.className='history-item';const main=document.createElement('div');main.className='hist-main';const title=document.createElement('div');title.className='hist-title';title.textContent=h.title||'未知节目';const sub=document.createElement('div');sub.className='hist-sub';sub.textContent=`${h.artist||h.group||'未设置艺术家'} · ${h.series||'未分类作品'} · ${h.displayTime||new Date(h.time||Date.now()).toLocaleString('zh-CN')}`;const tag=document.createElement('div');tag.className='hist-tag';tag.textContent=typeLabel(h.type);main.append(title,sub);row.append(main,tag);list.appendChild(row)});
 }
 function buildBackup(){
-  return {
-    schemaVersion:11,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),
-    stats:getStats(),history:getHistory(),settings:{...settings,p1Group:'*',p2Group:'*',p1Track:'',p2Track:''},
-    libraryGroups:library.groups.map(g=>({type:g.type,name:g.name})),
-    note:'音频 Blob 未包含在备份中'
-  };
+  return {schemaVersion:12,appVersion:APP_VERSION,exportedAt:new Date().toISOString(),stats:getStats(),history:getHistory(),settings:{...settings,p1Artist:'*',p1Series:'*',p1Track:'',p2Artist:'*',p2Series:'*',p2Track:''},artists:library.artists.map(({id,type,name,createdAt,system})=>({id,type,name,createdAt,system})),series:library.series.map(({id,type,artistId,name,playMode,currentTrackId,createdAt,legacyGroupId})=>({id,type,artistId,name,playMode,currentTrackId,createdAt,legacyGroupId})),trackState:library.tracks.map(t=>({id:t.id,fingerprint:t.fingerprint,type:t.type,artistId:t.artistId,seriesId:t.seriesId,title:t.title,episodeNumber:t.episodeNumber,order:t.order,completed:!!t.completed,lastPosition:Number(t.lastPosition)||0,lastPlayedAt:Number(t.lastPlayedAt)||0})),note:'音频 Blob 未包含在备份中'};
 }
 async function exportBackup(){
-  const data=buildBackup(),text=JSON.stringify(data,null,2),blob=new Blob([text],{type:'application/json'});
-  const file=new File([blob],`睡前相声数据备份_${localDateStr()}.json`,{type:'application/json'});
-  try{
-    if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'睡前相声数据备份',text:'包含播放时长、热力图、历史和设置'});return}
-  }catch(err){if(err.name==='AbortError')return}
+  const data=buildBackup(),text=JSON.stringify(data,null,2),blob=new Blob([text],{type:'application/json'}),file=new File([blob],`睡前相声V1.2数据备份_${localDateStr()}.json`,{type:'application/json'});
+  try{if(navigator.canShare?.({files:[file]})){await navigator.share({files:[file],title:'睡前相声数据备份',text:'包含播放时长、作品层级和续播进度'});return}}catch(err){if(err.name==='AbortError')return}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
-function mergeStats(current,incoming){
-  const out={...current};Object.entries(incoming||{}).forEach(([k,v])=>out[k]=Math.max(Number(out[k])||0,Number(v)||0));return out
-}
-function mergeHistory(current,incoming){
-  const map=new Map();[...(current||[]),...(incoming||[])].forEach(h=>{
-    const key=h.id||`${h.title}|${h.type}|${h.time||h.displayTime}`;if(!map.has(key))map.set(key,h)
-  });
-  return [...map.values()].sort((a,b)=>new Date(b.time||0)-new Date(a.time||0)).slice(0,100)
-}
+function mergeStats(current,incoming){const out={...current};Object.entries(incoming||{}).forEach(([k,v])=>out[k]=Math.max(Number(out[k])||0,Number(v)||0));return out}
+function mergeHistory(current,incoming){const map=new Map();[...(current||[]),...(incoming||[])].forEach(h=>{const key=h.id||`${h.title}|${h.type}|${h.time||h.displayTime}`;if(!map.has(key))map.set(key,h)});return [...map.values()].sort((a,b)=>new Date(b.time||0)-new Date(a.time||0)).slice(0,150)}
 async function importBackup(file){
-  const data=parseJson(await file.text(),null);
-  if(!data||typeof data!=='object'||(!data.stats&&!data.history))throw new Error('备份文件缺少统计或历史数据');
-  createSnapshot('before-import',true);
-  writeProtected(STATS_KEY,mergeStats(getStats(),data.stats||{}));
-  writeProtected(HISTORY_KEY,mergeHistory(getHistory(),data.history||[]));
-  if(data.settings&&confirm('是否同时恢复播放设置？')){
-    settings={...settings,...data.settings,p1Group:'*',p2Group:'*',p1Track:'',p2Track:''};saveSettings()
-  }
-  for(const g of data.libraryGroups||[]){
-    if(['duo','solo','story'].includes(g.type)&&g.name)await createGroup(g.type,g.name);
-  }
+  const data=parseJson(await file.text(),null);if(!data||typeof data!=='object'||(!data.stats&&!data.history))throw new Error('备份文件缺少统计或历史数据');createSnapshot('before-import',true);
+  writeProtected(STATS_KEY,mergeStats(getStats(),data.stats||{}));writeProtected(HISTORY_KEY,mergeHistory(getHistory(),data.history||[]));
+  const artistIdMap=new Map(),seriesIdMap=new Map();
+  for(const a of data.artists||[]){if(!['duo','solo','story'].includes(a.type)||!a.name)continue;const local=await createArtist(a.type,a.name);artistIdMap.set(a.id,local.id)}
+  await refreshLibrary();
+  for(const s of data.series||[]){const mappedArtist=artistIdMap.get(s.artistId)||unknownArtistId(s.type);const local=await createSeries(s.type,mappedArtist,s.name,s.playMode||defaultSeriesMode(s.type));seriesIdMap.set(s.id,local.id)}
+  await refreshLibrary();
+  const byFingerprint=new Map(library.tracks.map(t=>[t.fingerprint,t])),byKey=new Map(library.tracks.map(t=>[`${t.type}|${t.title}`,t]));
+  const updates=[];for(const saved of data.trackState||[]){const local=byFingerprint.get(saved.fingerprint)||byKey.get(`${saved.type}|${saved.title}`);if(!local)continue;updates.push({...local,completed:!!saved.completed,lastPosition:Math.max(Number(local.lastPosition)||0,Number(saved.lastPosition)||0),episodeNumber:saved.episodeNumber??local.episodeNumber,order:saved.order??local.order})}
+  if(updates.length){const db=await openDB(),tx=db.transaction('trackMeta','readwrite');updates.forEach(t=>tx.objectStore('trackMeta').put(t));await txDone(tx)}
+  if(data.settings&&confirm('是否同时恢复播放设置？')){settings={...settings,...data.settings,p1Artist:'*',p1Series:'*',p1Track:'',p2Artist:'*',p2Series:'*',p2Track:''};saveSettings()}
   await refreshLibrary();renderStats();createSnapshot('after-import',true);
 }
-$('exportBtn').onclick=exportBackup;
-$('importBtn').onclick=()=>{$('backupInput').value='';$('backupInput').click()};
+$('exportBtn').onclick=exportBackup;$('importBtn').onclick=()=>{$('backupInput').value='';$('backupInput').click()};
 $('backupInput').onchange=async e=>{try{if(e.target.files[0]){await importBackup(e.target.files[0]);toast('数据已安全合并恢复')}}catch(err){toast(`恢复失败：${err.message}`,3500)}};
-$('rollbackBtn').onclick=restoreSnapshot;
-$('snapshotNowBtn').onclick=()=>{createSnapshot('manual',true);toast('已创建本地快照')};
+$('rollbackBtn').onclick=restoreSnapshot;$('snapshotNowBtn').onclick=()=>{createSnapshot('manual',true);toast('已创建本地快照')};
 
-/* ---------- 播放引擎：双播放器、会话恢复、真实媒体时长统计 ---------- */
+/* ---------- 播放引擎：连续作品、双播放器、会话恢复 ---------- */
 const runtimes={
-  1:{player:$('phase1Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,loading:false},
-  2:{player:$('phase2Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,loading:false}
+  1:{player:$('phase1Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,lastProgressSavedAt:0,loading:false},
+  2:{player:$('phase2Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,lastProgressSavedAt:0,loading:false}
 };
 let session={has:false,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:null,2:null},lastSavedAt:0};
 let ticker=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
 function activeRuntime(){return runtimes[session.phase]}
 function activePlayer(){return activeRuntime().player}
-function candidateTracks(phase){
-  const type=settings[`p${phase}Type`];if(type==='none')return[];
-  return tracksFor(type,settings[`p${phase}Group`]);
-}
-function chooseTrack(phase,excludeId=null){
-  const list=candidateTracks(phase);
-  if(settings.manualMode){
-    const id=settings[`p${phase}Track`],fixed=list.find(t=>t.id===id);if(fixed)return fixed;
+function candidateTracks(phase){const type=settings[`p${phase}Type`];if(type==='none')return[];return tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`])}
+function selectedSeries(phase){const id=settings[`p${phase}Series`];return id&&id!=='*'?getSeries(id):null}
+function chooseTrack(phase,excludeId=null,forNext=false){
+  const list=candidateTracks(phase);if(!list.length)return null;
+  if(settings.manualMode&&!forNext){const id=settings[`p${phase}Track`],fixed=list.find(t=>t.id===id);if(fixed)return fixed}
+  const s=selectedSeries(phase);
+  if(s?.playMode==='sequential'){
+    const ordered=[...list].sort(trackSort);
+    if(forNext&&excludeId){const idx=ordered.findIndex(t=>t.id===excludeId);return idx>=0?ordered[idx+1]||null:null}
+    const current=ordered.find(t=>t.id===s.currentTrackId&&!t.completed)||ordered.find(t=>!t.completed)||ordered[0];return current||null;
   }
-  const pool=list.length>1?list.filter(t=>t.id!==excludeId):list;
-  return pool[Math.floor(Math.random()*pool.length)]||null;
+  const pool=list.length>1?list.filter(t=>t.id!==excludeId):list;return pool[Math.floor(Math.random()*pool.length)]||null;
 }
-function waitMediaReady(player){
-  if(player.readyState>=1)return Promise.resolve();
-  return new Promise((resolve,reject)=>{
-    const done=()=>{cleanup();resolve()},bad=()=>{cleanup();reject(new Error('音频无法读取'))};
-    const cleanup=()=>{player.removeEventListener('loadedmetadata',done);player.removeEventListener('error',bad);clearTimeout(to)};
-    const to=setTimeout(bad,10000);player.addEventListener('loadedmetadata',done,{once:true});player.addEventListener('error',bad,{once:true});
-  });
-}
-async function loadTrack(phase,trackId,position=0){
-  const meta=library.tracks.find(t=>t.id===trackId);if(!meta)throw new Error('节目已不存在');
-  const record=await getBlob(trackId);if(!record?.blob)throw new Error('音频文件已丢失');
-  const r=runtimes[phase];
-  if(r.url){URL.revokeObjectURL(r.url);r.url=null}
-  r.player.pause();r.player.removeAttribute('src');r.player.load();
-  r.url=URL.createObjectURL(record.blob);r.trackId=trackId;r.meta=meta;r.lastMediaTime=0;r.loading=true;
+function waitMediaReady(player){if(player.readyState>=1)return Promise.resolve();return new Promise((resolve,reject)=>{const done=()=>{cleanup();resolve()},bad=()=>{cleanup();reject(new Error('音频无法读取'))},cleanup=()=>{player.removeEventListener('loadedmetadata',done);player.removeEventListener('error',bad);clearTimeout(to)},to=setTimeout(bad,10000);player.addEventListener('loadedmetadata',done,{once:true});player.addEventListener('error',bad,{once:true})})}
+async function loadTrack(phase,trackId,position=null){
+  const meta=library.tracks.find(t=>t.id===trackId);if(!meta)throw new Error('节目已不存在');const record=await getBlob(trackId);if(!record?.blob)throw new Error('音频文件已丢失');
+  const r=runtimes[phase];if(r.url){URL.revokeObjectURL(r.url);r.url=null}r.player.pause();r.player.removeAttribute('src');r.player.load();r.url=URL.createObjectURL(record.blob);r.trackId=trackId;r.meta=meta;r.lastMediaTime=0;r.loading=true;
   try{
     r.player.src=r.url;r.player.load();await waitMediaReady(r.player);
-    if(Number.isFinite(position)&&position>0)r.player.currentTime=Math.min(position,Math.max(0,(r.player.duration||position)-.1));
-    r.lastMediaTime=r.player.currentTime||0;
+    const resumePos=position===null?(Number(meta.lastPosition)||0):Number(position)||0;if(resumePos>0)r.player.currentTime=Math.min(resumePos,Math.max(0,(r.player.duration||resumePos)-.1));
+    r.lastMediaTime=r.player.currentTime||0;r.lastProgressSavedAt=Date.now();
+    const series=getSeries(meta.seriesId);if(series?.playMode==='sequential'&&series.currentTrackId!==meta.id){series.currentTrackId=meta.id;await updateSeriesMeta(series)}
     updateNowPlaying(meta,phase);updateMediaSession(meta);
   }finally{r.loading=false}
 }
 function updateNowPlaying(meta,phase=session.phase){
-  if(!meta)return;
-  $('nowType').textContent=typeLabel(meta.type);$('nowTitle').textContent=meta.title;$('nowGroup').textContent=groupName(meta.groupId);
-  $('nowPhase').textContent=session.running?`正在播放 · ${phase===1?'开场':'收尾'}`:`已暂停 · ${phase===1?'开场':'收尾'}`;
+  if(!meta)return;const ep=Number.isFinite(meta.episodeNumber)?`第 ${meta.episodeNumber} 集 · `:'';
+  $('nowType').textContent=typeLabel(meta.type);$('nowTitle').textContent=`${ep}${meta.title}`;$('nowGroup').textContent=`${artistName(meta.artistId)} · 《${seriesName(meta.seriesId)}》`;$('nowPhase').textContent=session.running?`正在播放 · ${phase===1?'开场':'收尾'}`:`已暂停 · ${phase===1?'开场':'收尾'}`;
 }
 function captureMediaProgress(phase){
-  const r=runtimes[phase],p=r.player;if(!session.running||phase!==session.phase||p.paused||p.seeking)return;
-  const cur=p.currentTime||0,delta=cur-r.lastMediaTime;
-  if(delta>0&&delta<3600)unflushedPlay+=delta;
-  r.lastMediaTime=cur;
-  if(unflushedPlay>=5)flushPlayTime();
+  const r=runtimes[phase],p=r.player;if(!session.running||phase!==session.phase||p.paused||p.seeking)return;const cur=p.currentTime||0,delta=cur-r.lastMediaTime;if(delta>0&&delta<3600)unflushedPlay+=delta;r.lastMediaTime=cur;
+  if(unflushedPlay>=5)flushPlayTime();if(Date.now()-r.lastProgressSavedAt>=5000)persistTrackProgress(phase,false);
 }
-function flushPlayTime(){
-  if(unflushedPlay>.15){recordPlaySeconds(unflushedPlay);unflushedPlay=0}
+function flushPlayTime(){if(unflushedPlay>.15){recordPlaySeconds(unflushedPlay);unflushedPlay=0}}
+async function persistTrackProgress(phase,force=false){
+  const r=runtimes[phase],meta=r.meta;if(!meta)return;if(!force&&Date.now()-r.lastProgressSavedAt<4500)return;
+  meta.lastPosition=Math.max(0,Number(r.player.currentTime)||0);meta.lastPlayedAt=Date.now();if(meta.lastPosition>0)meta.completed=false;r.lastProgressSavedAt=Date.now();
+  try{await updateTrackMeta(meta)}catch(err){console.warn('保存节目进度失败',err)}
 }
-function fadeVolume(player,from,to,ms){
-  return new Promise(resolve=>{
-    if(!settings.fadeEnabled||ms<50){player.volume=to;resolve();return}
-    const start=performance.now();
-    const step=now=>{const t=clamp((now-start)/ms,0,1);player.volume=from+(to-from)*t;if(t<1)requestAnimationFrame(step);else resolve()};
-    requestAnimationFrame(step);
-  });
-}
+async function markTrackCompleted(track){if(!track)return;track.completed=true;track.lastPosition=0;track.lastPlayedAt=Date.now();await updateTrackMeta(track)}
+function fadeVolume(player,from,to,ms){return new Promise(resolve=>{if(!settings.fadeEnabled||ms<50){player.volume=to;resolve();return}const start=performance.now(),step=now=>{const t=clamp((now-start)/ms,0,1);player.volume=from+(to-from)*t;if(t<1)requestAnimationFrame(step);else resolve()};requestAnimationFrame(step)})}
 async function startNewSession(){
-  const t1=chooseTrack(1);if(!t1){toast('开场没有可用音频，请先在资料库添加');openSheet('librarySheet');return}
-  const t2=settings.p2Type==='none'?null:chooseTrack(2);
-  if(settings.p2Type!=='none'&&!t2){toast('收尾没有可用音频，请调整分组或添加音频');return}
-  stopTicker();releasePhase(2);
-  session={has:true,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:t1.id,2:t2?.id||null},lastSavedAt:0};
-  await loadTrack(1,t1.id,0);addHistory(t1);await playSession();
+  const t1=chooseTrack(1);if(!t1){toast('开场没有可用音频，请先在资料库添加');openSheet('librarySheet');return}const t2=settings.p2Type==='none'?null:chooseTrack(2);if(settings.p2Type!=='none'&&!t2){toast('收尾没有可用音频，请调整艺术家或作品');return}
+  stopTicker();releasePhase(2);session={has:true,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:t1.id,2:t2?.id||null},lastSavedAt:0};await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
 }
 async function playSession(){
   if(!session.has)return startNewSession();
-  try{
-    ensureAudioGraph();if(audioCtx?.state==='suspended')await audioCtx.resume();
-    const p=activePlayer();await p.play();session.running=true;session.startMs=Date.now()-session.elapsed*1000;
-    activeRuntime().lastMediaTime=p.currentTime||0;
-    $('fan').classList.add('playing');$('configPanel').classList.add('collapsed');$('configToggle').textContent='展开';
-    setPlayIcon(true);updateNowPlaying(activeRuntime().meta);startTicker();updateMediaPlaybackState();
-  }catch(err){toast(`无法开始播放：${err.message}`,3200);session.running=false;setPlayIcon(false)}
+  try{ensureAudioGraph();if(audioCtx?.state==='suspended')await audioCtx.resume();const p=activePlayer();await p.play();session.running=true;session.startMs=Date.now()-session.elapsed*1000;activeRuntime().lastMediaTime=p.currentTime||0;$('fan').classList.add('playing');$('configPanel').classList.add('collapsed');$('configToggle').textContent='展开';setPlayIcon(true);updateNowPlaying(activeRuntime().meta);startTicker();updateMediaPlaybackState()}
+  catch(err){toast(`无法开始播放：${err.message}`,3200);session.running=false;setPlayIcon(false)}
 }
-function pauseSession(){
-  if(!session.running)return;
-  captureMediaProgress(session.phase);flushPlayTime();session.running=false;
-  if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;
-  Object.values(runtimes).forEach(r=>r.player.pause());stopTicker();$('fan').classList.remove('playing');
-  $('nowPhase').textContent='已暂停';setPlayIcon(false);saveSessionState();updateMediaPlaybackState();
-}
+function pauseSession(){if(!session.running)return;captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);session.running=false;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;Object.values(runtimes).forEach(r=>r.player.pause());stopTicker();$('fan').classList.remove('playing');$('nowPhase').textContent='已暂停';setPlayIcon(false);saveSessionState();updateMediaPlaybackState()}
 async function togglePlayback(){if(session.running)pauseSession();else if(session.has)await playSession();else await startNewSession()}
 async function switchPhase(){
-  if(session.switching||session.finishing||settings.p2Type==='none')return;
-  session.switching=true;const old=runtimes[1];captureMediaProgress(1);flushPlayTime();
-  $('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);old.player.pause();
-  session.phase=2;
-  try{
-    if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],0);
-    const r=runtimes[2];r.player.volume=settings.fadeEnabled?0:1;await r.player.play();addHistory(r.meta);
-    await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;
-    session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState();
-  }catch(err){session.switching=false;await handleAudioError(2,err)}
+  if(session.switching||session.finishing||settings.p2Type==='none')return;session.switching=true;const old=runtimes[1];captureMediaProgress(1);flushPlayTime();await persistTrackProgress(1,true);$('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);old.player.pause();session.phase=2;
+  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState()}
+  catch(err){session.switching=false;await handleAudioError(2,err)}
 }
-async function playNext(phase=session.phase){
-  const current=runtimes[phase].trackId,next=chooseTrack(phase,current);
-  if(!next){toast('当前分组没有其他可播放节目');return}
-  captureMediaProgress(phase);flushPlayTime();
-  try{
-    await loadTrack(phase,next.id,0);session.phaseTracks[phase]=next.id;addHistory(next);
-    if(session.running){activeRuntime().player.volume=1;await activeRuntime().player.play()}
-    consecutiveErrors=0;saveSessionState();
-  }catch(err){await handleAudioError(phase,err)}
+async function playNext(phase=session.phase,{markCompleted=false}={}){
+  const current=runtimes[phase].meta;if(current){captureMediaProgress(phase);flushPlayTime();if(markCompleted)await markTrackCompleted(current);else await persistTrackProgress(phase,true)}
+  const next=chooseTrack(phase,current?.id||null,true);
+  if(!next){if(phase===1&&settings.p2Type!=='none')await switchPhase();else await finishSession(selectedSeries(phase)?.playMode==='sequential'?'本作品已播完':'当前分组没有其他节目');return}
+  try{await loadTrack(phase,next.id,null);session.phaseTracks[phase]=next.id;addHistory(next);if(session.running){runtimes[phase].player.volume=1;await runtimes[phase].player.play()}consecutiveErrors=0;saveSessionState()}
+  catch(err){await handleAudioError(phase,err)}
 }
-async function handleEnded(phase){
-  captureMediaProgress(phase);flushPlayTime();
-  if(phase!==session.phase||session.finishing)return;
-  if(settings.playToEnd){
-    if(phase===1&&settings.p2Type!=='none')await switchPhase();else await finishSession();
-  }else{
-    if(phase===1&&settings.p2Type!=='none'&&session.elapsed>=settings.switchMinutes*60)await switchPhase();
-    else await playNext(phase);
-  }
-}
-async function handleAudioError(phase,err){
-  if(!session.has||session.finishing)return;
-  consecutiveErrors++;toast(`音频无法播放，正在跳过${err?.message?`：${err.message}`:''}`,3000);
-  if(consecutiveErrors>=3){await finishSession('连续 3 段音频无法播放');return}
-  await playNext(phase);
-}
+async function handleEnded(phase){captureMediaProgress(phase);flushPlayTime();if(phase!==session.phase||session.finishing)return;await playNext(phase,{markCompleted:true})}
+async function handleAudioError(phase,err){if(!session.has||session.finishing)return;consecutiveErrors++;toast(`音频无法播放，正在跳过${err?.message?`：${err.message}`:''}`,3000);if(consecutiveErrors>=3){await finishSession('连续 3 集音频无法播放');return}await playNext(phase)}
 async function finishSession(reason='播放结束'){
-  if(session.finishing)return;session.finishing=true;session.running=false;stopTicker();flushPlayTime();
-  const fades=Object.values(runtimes).map(r=>fadeVolume(r.player,r.player.volume||0,0,settings.fadeMs));
-  await Promise.allSettled(fades);Object.values(runtimes).forEach(r=>r.player.pause());
-  session.has=false;session.finishing=false;session.switching=false;localStorage.removeItem(SESSION_KEY);
-  $('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';$('nowGroup').textContent='';
-  $('nowPhase').textContent=reason;setPlayIcon(false);
-  if(!settings.playToEnd)paintTimeline(settings.totalMinutes*60,settings.totalMinutes*60);
-  updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');
+  if(session.finishing)return;session.finishing=true;session.running=false;stopTicker();flushPlayTime();await Promise.allSettled([persistTrackProgress(1,true),persistTrackProgress(2,true)]);const fades=Object.values(runtimes).map(r=>fadeVolume(r.player,r.player.volume||0,0,settings.fadeMs));await Promise.allSettled(fades);Object.values(runtimes).forEach(r=>r.player.pause());session.has=false;session.finishing=false;session.switching=false;localStorage.removeItem(SESSION_KEY);$('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';$('nowGroup').textContent='';$('nowPhase').textContent=reason;setPlayIcon(false);if(!settings.playToEnd)paintTimeline(settings.totalMinutes*60,settings.totalMinutes*60);updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary();
 }
-function releasePhase(phase){
-  const r=runtimes[phase];r.player.pause();r.player.removeAttribute('src');r.player.load();
-  if(r.url)URL.revokeObjectURL(r.url);r.url=null;r.trackId=null;r.meta=null;r.lastMediaTime=0;
-}
+function releasePhase(phase){const r=runtimes[phase];r.player.pause();r.player.removeAttribute('src');r.player.load();if(r.url)URL.revokeObjectURL(r.url);r.url=null;r.trackId=null;r.meta=null;r.lastMediaTime=0}
 function startTicker(){stopTicker();ticker=setInterval(tick,500);tick()}
 function stopTicker(){if(ticker){clearInterval(ticker);ticker=null}}
 function tick(){
-  if(!session.running)return;
-  if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;
-  captureMediaProgress(session.phase);
+  if(!session.running)return;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;captureMediaProgress(session.phase);
   if(settings.p2Type!=='none'&&!settings.playToEnd&&session.phase===1&&!session.switching&&session.elapsed>=settings.switchMinutes*60)switchPhase();
   if(!settings.playToEnd&&session.elapsed>=settings.totalMinutes*60&&!session.finishing){finishSession();return}
-  if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}
-  else paintTimeline(session.elapsed,settings.totalMinutes*60);
-  if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}
-  updateMediaPosition();
+  if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}else paintTimeline(session.elapsed,settings.totalMinutes*60);
+  if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}updateMediaPosition();
 }
-function paintTimeline(cur,dur){
-  const pct=clamp((cur/(dur||1))*100,0,100);$('timelineFill').style.width=`${pct}%`;$('timelineThumb').style.left=`${pct}%`;
-  $('elapsedText').textContent=fmt(cur);$('totalText').textContent=settings.playToEnd?(Number.isFinite(dur)?fmt(dur):'--:--'):fmt(dur);
-}
-function setPlayIcon(playing){
-  $('playSvg').innerHTML=playing?'<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';
-  $('playBtn').setAttribute('aria-label',playing?'暂停':'播放');
-}
-function updateStartButton(){
-  const ok1=candidateTracks(1).length>0&&(!settings.manualMode||!!settings.p1Track);
-  const ok2=settings.p2Type==='none'||(candidateTracks(2).length>0&&(!settings.manualMode||!!settings.p2Track));
-  $('playBtn').disabled=!session.has&&!(ok1&&ok2);
-}
-$('playBtn').onclick=togglePlayback;
-$('seekBack').onclick=()=>seekActive(-15);
-$('seekForward').onclick=()=>seekActive(15);
-$('nextBtn').onclick=()=>session.has?playNext(session.phase):toast('尚未开始播放');
-function seekActive(delta){
-  if(!session.has)return;
-  const p=activePlayer();p.currentTime=clamp((p.currentTime||0)+delta,0,Number.isFinite(p.duration)?p.duration:Infinity);
-  activeRuntime().lastMediaTime=p.currentTime||0;saveSessionState();updateMediaPosition();
-}
-let dragging=false;
-$('timelineTrack').onpointerdown=e=>{if(!session.has)return;dragging=true;$('timelineTrack').setPointerCapture(e.pointerId)};
-$('timelineTrack').onpointerup=e=>{
-  if(!dragging)return;dragging=false;
-  const r=$('timelineTrack').getBoundingClientRect(),ratio=clamp((e.clientX-r.left)/r.width,0,1);
-  if(settings.playToEnd){const p=activePlayer();if(Number.isFinite(p.duration)){p.currentTime=p.duration*ratio;activeRuntime().lastMediaTime=p.currentTime}}
-  else{session.elapsed=settings.totalMinutes*60*ratio;session.startMs=Date.now()-session.elapsed*1000;if(session.phase===1&&settings.p2Type!=='none'&&session.elapsed>=settings.switchMinutes*60)switchPhase()}
-  tick();saveSessionState();
-};
-Object.entries(runtimes).forEach(([phase,r])=>{
-  const n=Number(phase);
-  r.player.addEventListener('timeupdate',()=>captureMediaProgress(n));
-  r.player.addEventListener('seeking',()=>r.lastMediaTime=r.player.currentTime||0);
-  r.player.addEventListener('seeked',()=>r.lastMediaTime=r.player.currentTime||0);
-  r.player.addEventListener('ended',()=>handleEnded(n));
-  r.player.addEventListener('error',()=>{if(r.player.src&&!r.loading)handleAudioError(n,new Error('文件损坏或格式不受支持'))});
-});
+function paintTimeline(cur,dur){const pct=clamp((cur/(dur||1))*100,0,100);$('timelineFill').style.width=`${pct}%`;$('timelineThumb').style.left=`${pct}%`;$('elapsedText').textContent=fmt(cur);$('totalText').textContent=settings.playToEnd?(Number.isFinite(dur)?fmt(dur):'--:--'):fmt(dur)}
+function setPlayIcon(playing){$('playSvg').innerHTML=playing?'<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('playBtn').setAttribute('aria-label',playing?'暂停':'播放')}
+function updateStartButton(){const ok1=candidateTracks(1).length>0&&(!settings.manualMode||!!settings.p1Track),ok2=settings.p2Type==='none'||(candidateTracks(2).length>0&&(!settings.manualMode||!!settings.p2Track));$('playBtn').disabled=!session.has&&!(ok1&&ok2)}
+$('playBtn').onclick=togglePlayback;$('seekBack').onclick=()=>seekActive(-15);$('seekForward').onclick=()=>seekActive(15);$('nextBtn').onclick=()=>session.has?playNext(session.phase):toast('尚未开始播放');
+function seekActive(delta){if(!session.has)return;const p=activePlayer();p.currentTime=clamp((p.currentTime||0)+delta,0,Number.isFinite(p.duration)?p.duration:Infinity);activeRuntime().lastMediaTime=p.currentTime||0;persistTrackProgress(session.phase,true);saveSessionState();updateMediaPosition()}
+let dragging=false;$('timelineTrack').onpointerdown=e=>{if(!session.has)return;dragging=true;$('timelineTrack').setPointerCapture(e.pointerId)};
+$('timelineTrack').onpointerup=e=>{if(!dragging)return;dragging=false;const r=$('timelineTrack').getBoundingClientRect(),ratio=clamp((e.clientX-r.left)/r.width,0,1);if(settings.playToEnd){const p=activePlayer();if(Number.isFinite(p.duration)){p.currentTime=p.duration*ratio;activeRuntime().lastMediaTime=p.currentTime}}else{session.elapsed=settings.totalMinutes*60*ratio;session.startMs=Date.now()-session.elapsed*1000;if(session.phase===1&&settings.p2Type!=='none'&&session.elapsed>=settings.switchMinutes*60)switchPhase()}tick();persistTrackProgress(session.phase,true);saveSessionState()};
+Object.entries(runtimes).forEach(([phase,r])=>{const n=Number(phase);r.player.addEventListener('timeupdate',()=>captureMediaProgress(n));r.player.addEventListener('seeking',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('seeked',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('ended',()=>handleEnded(n));r.player.addEventListener('error',()=>{if(r.player.src&&!r.loading)handleAudioError(n,new Error('文件损坏或格式不受支持'))})});
 
 /* ---------- 会话恢复 ---------- */
 function saveSessionState(){
   if(!session.has){localStorage.removeItem(SESSION_KEY);return}
-  const data={
-    schemaVersion:11,savedAt:Date.now(),phase:session.phase,elapsed:session.elapsed,
-    phaseTracks:{...session.phaseTracks},
-    positions:{1:runtimes[1].player.currentTime||0,2:runtimes[2].player.currentTime||0},
-    settings:{p1Type:settings.p1Type,p1Group:settings.p1Group,p1Track:settings.p1Track,p2Type:settings.p2Type,p2Group:settings.p2Group,p2Track:settings.p2Track,totalMinutes:settings.totalMinutes,playToEnd:settings.playToEnd,switchMinutes:settings.switchMinutes,manualMode:settings.manualMode},
-    title:activeRuntime().meta?.title||''
-  };
-  writeJson(SESSION_KEY,data);
+  const data={schemaVersion:12,savedAt:Date.now(),phase:session.phase,elapsed:session.elapsed,phaseTracks:{...session.phaseTracks},positions:{1:runtimes[1].player.currentTime||0,2:runtimes[2].player.currentTime||0},settings:{p1Type:settings.p1Type,p1Artist:settings.p1Artist,p1Series:settings.p1Series,p1Track:settings.p1Track,p2Type:settings.p2Type,p2Artist:settings.p2Artist,p2Series:settings.p2Series,p2Track:settings.p2Track,totalMinutes:settings.totalMinutes,playToEnd:settings.playToEnd,switchMinutes:settings.switchMinutes,manualMode:settings.manualMode},title:activeRuntime().meta?.title||'',series:activeRuntime().meta?seriesName(activeRuntime().meta.seriesId):''};writeJson(SESSION_KEY,data);
 }
-function showResumeCandidate(){
-  const saved=readJson(SESSION_KEY,null);
-  if(!saved||Date.now()-saved.savedAt>14*86400000)return;
-  const activeId=saved.phaseTracks?.[saved.phase];
-  if(!library.tracks.some(t=>t.id===activeId)){localStorage.removeItem(SESSION_KEY);return}
-  $('resumeTitle').textContent=saved.title||'继续上次播放';
-  $('resumeSub').textContent=`上次停在 ${fmt(saved.elapsed||0)} · ${new Date(saved.savedAt).toLocaleString('zh-CN')}`;
-  $('resumeCard').classList.add('show');
-  $('resumeYes').onclick=()=>restoreSession(saved);
-  $('resumeNo').onclick=()=>{$('resumeCard').classList.remove('show');localStorage.removeItem(SESSION_KEY);toast('已放弃上次播放进度')};
-}
-async function restoreSession(saved){
-  try{
-    settings={...settings,...saved.settings};saveSettings();
-    session={has:true,running:false,switching:false,finishing:false,phase:Number(saved.phase)||1,elapsed:Number(saved.elapsed)||0,startMs:0,phaseTracks:{1:saved.phaseTracks?.[1]||saved.phaseTracks?.['1'],2:saved.phaseTracks?.[2]||saved.phaseTracks?.['2']||null},lastSavedAt:0};
-    const id=session.phaseTracks[session.phase],pos=saved.positions?.[session.phase]||saved.positions?.[String(session.phase)]||0;
-    await loadTrack(session.phase,id,pos);$('resumeCard').classList.remove('show');paintTimeline(session.elapsed,settings.playToEnd?(activePlayer().duration||1):settings.totalMinutes*60);
-    await playSession();toast('已继续上次播放');
-  }catch(err){localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast(`无法恢复：${err.message}`)}
-}
+function showResumeCandidate(){const saved=readJson(SESSION_KEY,null);if(!saved||Date.now()-saved.savedAt>14*86400000)return;const activeId=saved.phaseTracks?.[saved.phase];if(!library.tracks.some(t=>t.id===activeId)){localStorage.removeItem(SESSION_KEY);return}$('resumeTitle').textContent=saved.series?`继续《${saved.series}》`:(saved.title||'继续上次播放');$('resumeSub').textContent=`${saved.title||''} · ${fmt(saved.positions?.[saved.phase]||saved.elapsed||0)} · ${new Date(saved.savedAt).toLocaleString('zh-CN')}`;$('resumeCard').classList.add('show');$('resumeYes').onclick=()=>restoreSession(saved);$('resumeNo').onclick=()=>{$('resumeCard').classList.remove('show');localStorage.removeItem(SESSION_KEY);toast('已放弃上次播放进度')}}
+async function restoreSession(saved){try{settings={...settings,...saved.settings};saveSettings();session={has:true,running:false,switching:false,finishing:false,phase:Number(saved.phase)||1,elapsed:Number(saved.elapsed)||0,startMs:0,phaseTracks:{1:saved.phaseTracks?.[1]||saved.phaseTracks?.['1'],2:saved.phaseTracks?.[2]||saved.phaseTracks?.['2']||null},lastSavedAt:0};const id=session.phaseTracks[session.phase],pos=saved.positions?.[session.phase]||saved.positions?.[String(session.phase)]||0;await loadTrack(session.phase,id,pos);$('resumeCard').classList.remove('show');paintTimeline(session.elapsed,settings.playToEnd?(activePlayer().duration||1):settings.totalMinutes*60);await playSession();toast('已继续上次播放')}catch(err){localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast(`无法恢复：${err.message}`)}}
 $('clearSessionBtn').onclick=()=>{localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast('上次播放进度已清除')};
-window.addEventListener('pagehide',()=>{captureMediaProgress(session.phase);flushPlayTime();saveSessionState()});
-document.addEventListener('visibilitychange',()=>{if(document.hidden){captureMediaProgress(session.phase);flushPlayTime();saveSessionState()}else if(session.running){tick()}});
+window.addEventListener('pagehide',()=>{captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);saveSessionState()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);saveSessionState()}else if(session.running)tick()});
 
-/* ---------- Media Session、锁屏控制与音频处理 ---------- */
-function updateMediaSession(meta){
-  if(!('mediaSession'in navigator)||!meta)return;
-  navigator.mediaSession.metadata=new MediaMetadata({
-    title:meta.title,artist:groupName(meta.groupId),album:typeLabel(meta.type),
-    artwork:[
-      {src:new URL('icon-192.png',location.href).href,sizes:'192x192',type:'image/png'},
-      {src:new URL('icon-512.png',location.href).href,sizes:'512x512',type:'image/png'}
-    ]
-  });
-}
+/* ---------- Media Session 与音频处理 ---------- */
+function updateMediaSession(meta){if(!('mediaSession'in navigator)||!meta)return;const ep=Number.isFinite(meta.episodeNumber)?`第 ${meta.episodeNumber} 集 · `:'';navigator.mediaSession.metadata=new MediaMetadata({title:`${ep}${meta.title}`,artist:artistName(meta.artistId),album:seriesName(meta.seriesId),artwork:[{src:new URL('icon-192.png',location.href).href,sizes:'192x192',type:'image/png'},{src:new URL('icon-512.png',location.href).href,sizes:'512x512',type:'image/png'}]})}
 function updateMediaPlaybackState(){if('mediaSession'in navigator)navigator.mediaSession.playbackState=session.running?'playing':'paused'}
-function updateMediaPosition(){
-  if(!('mediaSession'in navigator)||!navigator.mediaSession.setPositionState)return;
-  const p=activePlayer();if(!Number.isFinite(p.duration)||p.duration<=0)return;
-  try{navigator.mediaSession.setPositionState({duration:p.duration,position:clamp(p.currentTime||0,0,p.duration),playbackRate:p.playbackRate||1})}catch{}
-}
-if('mediaSession'in navigator){
-  const handlers={
-    play:()=>{if(!session.running)togglePlayback()},
-    pause:()=>{if(session.running)pauseSession()},
-    seekbackward:d=>seekActive(-(d.seekOffset||15)),
-    seekforward:d=>seekActive(d.seekOffset||15),
-    seekto:d=>{if(session.has&&Number.isFinite(d.seekTime)){activePlayer().currentTime=d.seekTime;activeRuntime().lastMediaTime=d.seekTime}},
-    nexttrack:()=>session.has&&playNext(session.phase),
-    previoustrack:()=>session.has&&seekActive(-(activePlayer().currentTime||0))
-  };
-  Object.entries(handlers).forEach(([name,fn])=>{try{navigator.mediaSession.setActionHandler(name,fn)}catch{}});
-}
-function ensureAudioGraph(){
-  if(audioCtx)return;
-  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-  Object.entries(runtimes).forEach(([phase,r])=>{
-    const source=audioCtx.createMediaElementSource(r.player),hp=audioCtx.createBiquadFilter(),lp=audioCtx.createBiquadFilter(),comp=audioCtx.createDynamicsCompressor();
-    hp.type='highpass';lp.type='lowpass';source.connect(hp);hp.connect(lp);lp.connect(comp);comp.connect(audioCtx.destination);
-    audioNodes[phase]={hp,lp,comp};
-  });
-  applyAudioPreset();
-}
-function applyAudioPreset(){
-  if(!audioCtx)return;const now=audioCtx.currentTime;
-  Object.values(audioNodes).forEach(({hp,lp,comp})=>{
-    hp.frequency.setTargetAtTime(settings.denoiseOn?105:20,now,.08);
-    lp.frequency.setTargetAtTime(settings.denoiseOn?7800:20000,now,.08);
-    comp.threshold.setTargetAtTime(settings.denoiseOn?-34:-50,now,.08);
-    comp.ratio.setTargetAtTime(settings.denoiseOn?5:3,now,.08);
-    comp.knee.setTargetAtTime(28,now,.08);comp.attack.setTargetAtTime(.01,now,.08);comp.release.setTargetAtTime(.25,now,.08);
-  });
-}
+function updateMediaPosition(){if(!('mediaSession'in navigator)||!navigator.mediaSession.setPositionState)return;const p=activePlayer();if(!Number.isFinite(p.duration)||p.duration<=0)return;try{navigator.mediaSession.setPositionState({duration:p.duration,position:clamp(p.currentTime||0,0,p.duration),playbackRate:p.playbackRate||1})}catch{}}
+if('mediaSession'in navigator){const handlers={play:()=>{if(!session.running)togglePlayback()},pause:()=>{if(session.running)pauseSession()},seekbackward:d=>seekActive(-(d.seekOffset||15)),seekforward:d=>seekActive(d.seekOffset||15),seekto:d=>{if(session.has&&Number.isFinite(d.seekTime)){activePlayer().currentTime=d.seekTime;activeRuntime().lastMediaTime=d.seekTime}},nexttrack:()=>session.has&&playNext(session.phase),previoustrack:()=>session.has&&seekActive(-(activePlayer().currentTime||0))};Object.entries(handlers).forEach(([name,fn])=>{try{navigator.mediaSession.setActionHandler(name,fn)}catch{}})}
+function ensureAudioGraph(){if(audioCtx)return;audioCtx=new (window.AudioContext||window.webkitAudioContext)();Object.entries(runtimes).forEach(([phase,r])=>{const source=audioCtx.createMediaElementSource(r.player),hp=audioCtx.createBiquadFilter(),lp=audioCtx.createBiquadFilter(),comp=audioCtx.createDynamicsCompressor();hp.type='highpass';lp.type='lowpass';source.connect(hp);hp.connect(lp);lp.connect(comp);comp.connect(audioCtx.destination);audioNodes[phase]={hp,lp,comp}});applyAudioPreset()}
+function applyAudioPreset(){if(!audioCtx)return;const now=audioCtx.currentTime;Object.values(audioNodes).forEach(({hp,lp,comp})=>{hp.frequency.setTargetAtTime(settings.denoiseOn?105:20,now,.08);lp.frequency.setTargetAtTime(settings.denoiseOn?7800:20000,now,.08);comp.threshold.setTargetAtTime(settings.denoiseOn?-34:-50,now,.08);comp.ratio.setTargetAtTime(settings.denoiseOn?5:3,now,.08);comp.knee.setTargetAtTime(28,now,.08);comp.attack.setTargetAtTime(.01,now,.08);comp.release.setTargetAtTime(.25,now,.08)})}
 
 /* ---------- 入口 ---------- */
 $('btnStats').onclick=()=>{renderStats();openSheet('statsSheet')};
@@ -1107,15 +1005,14 @@ $('btnLibrary').onclick=()=>{renderLibrary();openSheet('librarySheet')};
 $('btnSettings').onclick=()=>{updateSnapshotDesc();openSheet('settingsSheet')};
 async function init(){
   try{
-    await openDB();await refreshLibrary();
-    ensureDailySnapshot();updateSnapshotDesc();renderStats();updateModeUI();showResumeCandidate();
+    await openDB();const migrated=await ensureV12Migration();await refreshLibrary();await migrateSettingsV11();ensureDailySnapshot();updateSnapshotDesc();renderStats();updateModeUI();showResumeCandidate();
     if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    $('miniStatus').textContent='V1.1 已启用：艺术家分组、锁屏控制、会话恢复、双播放器与数据保护';
-  }catch(err){
-    console.error(err);toast(`初始化失败：${err.message}`,5000);
-  }
+    $('miniStatus').textContent='V1.2 已启用：艺术家 → 作品 → 节目、折叠节目单与连续续播';
+    if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
+  }catch(err){console.error(err);toast(`初始化失败：${err.message}`,5000)}
 }
 init();
+
 </script>
 </body>
 </html>
