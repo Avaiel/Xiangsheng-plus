@@ -393,7 +393,7 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.0';
+const APP_VERSION='1.2.1';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
@@ -419,7 +419,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const makeId=()=>crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const clamp=(v,min,max)=>Math.min(max,Math.max(min,v));
 const collator=new Intl.Collator('zh-CN',{numeric:true,sensitivity:'base'});
-function parseJson(text,fallback){try{return JSON.parse(text)}catch{return fallback}}
+function parseJson(text,fallback){if(text===null||text===undefined||text==='')return fallback;try{const value=JSON.parse(text);return value===null?fallback:value}catch{return fallback}}
 function readJson(key,fallback){return parseJson(localStorage.getItem(key),fallback)}
 function writeJson(key,value){localStorage.setItem(key,JSON.stringify(value))}
 function readProtected(key,fallback){
@@ -713,7 +713,9 @@ $('fadeDuration').onchange=e=>{settings.fadeMs=Number(e.target.value);saveSettin
 /* ---------- 资料库：艺术家和作品双层折叠 ---------- */
 let activeLibType='duo',pendingImport={type:null,artistId:null,seriesId:null};
 let collapseState=readJson(COLLAPSE_KEY,{artists:{},series:{}});
-if(!collapseState.artists)collapseState.artists={};if(!collapseState.series)collapseState.series={};
+if(!collapseState||typeof collapseState!=='object'||Array.isArray(collapseState))collapseState={artists:{},series:{}};
+if(!collapseState.artists||typeof collapseState.artists!=='object'||Array.isArray(collapseState.artists))collapseState.artists={};
+if(!collapseState.series||typeof collapseState.series!=='object'||Array.isArray(collapseState.series))collapseState.series={};
 function saveCollapse(){writeJson(COLLAPSE_KEY,collapseState)}
 function artistCollapsed(id){return collapseState.artists[id]===true}
 function seriesCollapsed(id){return collapseState.series[id]!==false}
@@ -1007,7 +1009,7 @@ async function init(){
   try{
     await openDB();const migrated=await ensureV12Migration();await refreshLibrary();await migrateSettingsV11();ensureDailySnapshot();updateSnapshotDesc();renderStats();updateModeUI();showResumeCandidate();
     if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    $('miniStatus').textContent='V1.2 已启用：艺术家 → 作品 → 节目、折叠节目单与连续续播';
+    $('miniStatus').textContent='V1.2.1 已启用：修复顶部按钮，并保留艺术家 → 作品 → 节目';
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
   }catch(err){console.error(err);toast(`初始化失败：${err.message}`,5000)}
 }

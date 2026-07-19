@@ -1,4 +1,4 @@
-const CACHE_NAME = 'xiangsheng-cache-v12-20260719';
+const CACHE_NAME = 'xiangsheng-cache-v121-20260719';
 const APP_SHELL = [
   './',
   './index.html',
