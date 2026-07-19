@@ -4,8 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>睡前相声</title>
-<link rel="icon" href="icon-192.png" type="image/png">
+
 <link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png?v=2" type="image/png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#120d0a">
@@ -84,7 +85,7 @@
   .play-btn.is-playing svg { margin-left: 0; }
   .play-btn:active { transform: scale(0.92); }
 
-  /* --- 弹窗与统计数据 UI --- */
+  /* --- 弹窗与资料库 UI --- */
   .sheet-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; }
   .sheet-overlay.show { opacity: 1; pointer-events: auto; }
   .sheet-content { position: absolute; bottom: -100%; left: 0; width: 100%; background: var(--bg-card); border-radius: 24px 24px 0 0; padding: 24px 20px env(safe-area-inset-bottom, 24px); transition: 0.3s cubic-bezier(0.1, 0.8, 0.2, 1); border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: 90vh;}
@@ -104,7 +105,15 @@
   .switch.on .knob { left: 22px; background: var(--ember-light); }
   
   .scroll-area { overflow-y: auto; -webkit-overflow-scrolling: touch; flex: 1; padding-bottom: 20px; }
-  .lib-head { font-size: 13px; color: var(--ember); margin-bottom: 10px; display: flex; justify-content: space-between; margin-top:20px;}
+  
+  /* 资料库折叠模块特定样式 */
+  .lib-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 20px; }
+  .lib-title { font-size: 14px; color: var(--ember); display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 0; font-weight: bold;}
+  .lib-title .arrow { font-size: 10px; color: var(--ink-dim); transition: transform 0.3s ease; }
+  .lib-title.folded .arrow { transform: rotate(-90deg); }
+  .lib-list { display: block; }
+  .lib-list.folded { display: none; }
+
   .up-btn { background: var(--bg); border: 1px solid var(--line); padding: 4px 10px; border-radius: 12px; font-size: 12px; color: var(--ink); }
   .track-item { padding: 12px 10px; font-size: 14px; color: var(--ink-dim); border-bottom: 1px solid var(--line); }
   .track-item.selected { color: var(--ember-light); font-weight: bold; background: rgba(201,123,63,0.1); border-radius: 8px; border-bottom: none; }
@@ -239,22 +248,36 @@
     </div>
   </div>
 
-  <!-- 资料库弹窗 -->
+  <!-- 资料库弹窗 (增加了折叠功能) -->
   <div class="sheet-overlay" id="libSheet">
     <div class="sheet-content">
       <button class="close-sheet" onclick="closeSheet('libSheet')">✕</button>
       <div class="sheet-title">音频资料库</div>
       <div class="scroll-area">
-        <div class="lib-head" style="margin-top:0;"><span>对口相声库</span> <div class="up-btn" id="pickDuo">添加音频</div></div>
-        <div id="duoList"><div class="track-item">暂无缓存数据</div></div>
-        <div class="lib-head"><span>单口相声库</span> <div class="up-btn" id="pickSolo">添加音频</div></div>
-        <div id="soloList"><div class="track-item">暂无缓存数据</div></div>
-        <div class="lib-head"><span>评书联播库</span> <div class="up-btn" id="pickStory">添加音频</div></div>
-        <div id="storyList"><div class="track-item">暂无缓存数据</div></div>
+        
+        <div class="lib-head" style="margin-top:0;">
+          <div class="lib-title" onclick="toggleLib('duoList', this)">对口相声库 <span class="arrow">▼</span></div> 
+          <div class="up-btn" id="pickDuo">添加文件</div>
+        </div>
+        <div id="duoList" class="lib-list"><div class="track-item">暂无缓存数据</div></div>
+        
+        <div class="lib-head">
+          <div class="lib-title" onclick="toggleLib('soloList', this)">单口相声库 <span class="arrow">▼</span></div> 
+          <div class="up-btn" id="pickSolo">添加文件</div>
+        </div>
+        <div id="soloList" class="lib-list"><div class="track-item">暂无缓存数据</div></div>
+        
+        <div class="lib-head">
+          <div class="lib-title" onclick="toggleLib('storyList', this)">评书联播库 <span class="arrow">▼</span></div> 
+          <div class="up-btn" id="pickStory">添加文件</div>
+        </div>
+        <div id="storyList" class="lib-list"><div class="track-item">暂无缓存数据</div></div>
+        
       </div>
-      <input type="file" id="duoInput" multiple accept="audio/*">
-      <input type="file" id="soloInput" multiple accept="audio/*">
-      <input type="file" id="storyInput" multiple accept="audio/*">
+      <!-- 支持音频与视频格式上传 -->
+      <input type="file" id="duoInput" multiple accept="audio/*,video/*">
+      <input type="file" id="soloInput" multiple accept="audio/*,video/*">
+      <input type="file" id="storyInput" multiple accept="audio/*,video/*">
     </div>
   </div>
 
@@ -274,13 +297,20 @@
   <audio id="playerStory" preload="auto"></audio>
 
 <script>
-  const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg)$/i;
+  // 增加 mp4, webm 等视频格式支持
+  const AUDIO_EXT = /\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 
   // --- 弹窗逻辑 ---
   document.getElementById('btnLibrary').onclick = () => document.getElementById('libSheet').classList.add('show');
   document.getElementById('btnSettings').onclick = () => document.getElementById('setSheet').classList.add('show');
   document.getElementById('btnStats').onclick = () => { renderStats(); document.getElementById('statsSheet').classList.add('show'); };
   function closeSheet(id) { document.getElementById(id).classList.remove('show'); }
+
+  // 资料库折叠逻辑
+  function toggleLib(listId, titleEl) {
+      document.getElementById(listId).classList.toggle('folded');
+      titleEl.classList.toggle('folded');
+  }
 
   // --- 统计与历史逻辑 ---
   function getTodayStr() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -491,7 +521,6 @@
           totalMinutes = min; playToEnd = (min === -1);
           totalLabel.textContent = playToEnd ? '--:--' : fmt(min * 60);
           
-          // --- 核心修复：滑动条最大值受限于总时长 ---
           if (!playToEnd) {
               slider.max = totalMinutes;
               if (parseFloat(slider.value) > totalMinutes) {
