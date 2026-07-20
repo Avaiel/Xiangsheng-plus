@@ -229,7 +229,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2 · 艺术家与连续作品</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.2 · 时间轴与倒计时修复</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -305,7 +305,7 @@ input[type=file]{display:none}
       <div class="timeline-track" id="timelineTrack">
         <div class="timeline-bg"></div><div class="timeline-fill" id="timelineFill"></div><div class="timeline-thumb" id="timelineThumb"></div>
       </div>
-      <div class="time-row"><span id="elapsedText">00:00</span><span id="totalText">20:00</span></div>
+      <div class="time-row"><span id="elapsedText">已播 00:00</span><span id="totalText">剩余 20:00</span></div>
     </div>
 
     <div class="controls">
@@ -314,7 +314,7 @@ input[type=file]{display:none}
       <button class="ctrl" id="seekForward" aria-label="快进15秒"><svg viewBox="0 0 24 24"><path d="M16.5 6.2V3L21 7.5 16.5 12V8.4A7 7 0 1 0 19 13h2a9 9 0 1 1-4.5-7.8zM9.5 9H11v6H9.5zm3 0H14v6h-1.5z"/></svg></button>
       <button class="ctrl" id="nextBtn" aria-label="换一段"><svg viewBox="0 0 24 24"><path d="M16 3h5v5h-2V6.4l-3.5 3.5-1.4-1.4L17.6 5H16V3zM4 5h5.2l8.8 8.8V12h2v5h-5v-2h1.6L8.4 7H4V5zm0 12v-2h4.4l2.3-2.3 1.4 1.4L9.2 17H4z"/></svg></button>
     </div>
-    <div class="mini-status" id="miniStatus">播放时长会自动保存，热力图由每日数据生成</div>
+    <div class="mini-status" id="miniStatus">左侧显示已播时间，右侧从播放开始倒计时</div>
   </div>
 </div>
 
@@ -393,7 +393,7 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.1';
+const APP_VERSION='1.2.2';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
@@ -684,7 +684,7 @@ function updateModeUI(){
   $('switchSlider').value=settings.switchMinutes;$('switchText').textContent=`${settings.switchMinutes} 分钟`;
   $('manualToggle').classList.toggle('on',settings.manualMode);$('fadeToggle').classList.toggle('on',settings.fadeEnabled);$('denoiseToggle').classList.toggle('on',settings.denoiseOn);$('fadeDuration').value=String(settings.fadeMs);
   document.querySelectorAll('#timerGrid .pill').forEach(b=>{const m=b.dataset.min;b.classList.toggle('active',settings.playToEnd?m==='-1':Number(m)===Number(settings.totalMinutes))});
-  $('totalText').textContent=settings.playToEnd?'--:--':fmt(settings.totalMinutes*60);updateStartButton();
+  if(settings.playToEnd){$('elapsedText').textContent='当前 00:00';$('totalText').textContent='总长 --:--'}else{$('elapsedText').textContent='已播 00:00';$('totalText').textContent=`剩余 ${fmt(settings.totalMinutes*60)}`}updateStartButton();
 }
 document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
   const phase=Number(btn.dataset.phase),type=btn.dataset.type;settings[`p${phase}Type`]=type;settings[`p${phase}Artist`]='*';settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings();
@@ -891,7 +891,7 @@ const runtimes={
   2:{player:$('phase2Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,lastProgressSavedAt:0,loading:false}
 };
 let session={has:false,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:null,2:null},lastSavedAt:0};
-let ticker=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
+let ticker=null,boundaryTimer=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
 function activeRuntime(){return runtimes[session.phase]}
 function activePlayer(){return activeRuntime().player}
 function candidateTracks(phase){const type=settings[`p${phase}Type`];if(type==='none')return[];return tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`])}
@@ -948,7 +948,7 @@ function pauseSession(){if(!session.running)return;captureMediaProgress(session.
 async function togglePlayback(){if(session.running)pauseSession();else if(session.has)await playSession();else await startNewSession()}
 async function switchPhase(){
   if(session.switching||session.finishing||settings.p2Type==='none')return;session.switching=true;const old=runtimes[1];captureMediaProgress(1);flushPlayTime();await persistTrackProgress(1,true);$('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);old.player.pause();session.phase=2;
-  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState()}
+  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState();scheduleBoundaryTimer()}
   catch(err){session.switching=false;await handleAudioError(2,err)}
 }
 async function playNext(phase=session.phase,{markCompleted=false}={}){
@@ -964,23 +964,86 @@ async function finishSession(reason='播放结束'){
   if(session.finishing)return;session.finishing=true;session.running=false;stopTicker();flushPlayTime();await Promise.allSettled([persistTrackProgress(1,true),persistTrackProgress(2,true)]);const fades=Object.values(runtimes).map(r=>fadeVolume(r.player,r.player.volume||0,0,settings.fadeMs));await Promise.allSettled(fades);Object.values(runtimes).forEach(r=>r.player.pause());session.has=false;session.finishing=false;session.switching=false;localStorage.removeItem(SESSION_KEY);$('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';$('nowGroup').textContent='';$('nowPhase').textContent=reason;setPlayIcon(false);if(!settings.playToEnd)paintTimeline(settings.totalMinutes*60,settings.totalMinutes*60);updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary();
 }
 function releasePhase(phase){const r=runtimes[phase];r.player.pause();r.player.removeAttribute('src');r.player.load();if(r.url)URL.revokeObjectURL(r.url);r.url=null;r.trackId=null;r.meta=null;r.lastMediaTime=0}
-function startTicker(){stopTicker();ticker=setInterval(tick,500);tick()}
-function stopTicker(){if(ticker){clearInterval(ticker);ticker=null}}
+function sessionElapsedNow(){return session.running&&!settings.playToEnd?(Date.now()-session.startMs)/1000:session.elapsed}
+function scheduleBoundaryTimer(){
+  if(boundaryTimer){clearTimeout(boundaryTimer);boundaryTimer=null}
+  if(!session.running||settings.playToEnd||session.finishing)return;
+  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
+  const boundary=session.phase===1&&settings.p2Type!=='none'?Math.min(total,switchAt):total;
+  const delay=Math.max(0,boundary-sessionElapsedNow())*1000;
+  boundaryTimer=setTimeout(()=>{boundaryTimer=null;checkSessionBoundaries()},Math.min(delay+80,2147480000));
+}
+function checkSessionBoundaries(){
+  if(!session.running||settings.playToEnd||session.finishing)return false;
+  session.elapsed=sessionElapsedNow();
+  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
+  if(session.elapsed>=total){finishSession();return true}
+  if(settings.p2Type!=='none'&&session.phase===1&&!session.switching&&session.elapsed>=switchAt){switchPhase();return true}
+  return false;
+}
+function startTicker(){stopTicker();ticker=setInterval(tick,500);scheduleBoundaryTimer();tick()}
+function stopTicker(){if(ticker){clearInterval(ticker);ticker=null}if(boundaryTimer){clearTimeout(boundaryTimer);boundaryTimer=null}}
 function tick(){
-  if(!session.running)return;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;captureMediaProgress(session.phase);
-  if(settings.p2Type!=='none'&&!settings.playToEnd&&session.phase===1&&!session.switching&&session.elapsed>=settings.switchMinutes*60)switchPhase();
-  if(!settings.playToEnd&&session.elapsed>=settings.totalMinutes*60&&!session.finishing){finishSession();return}
+  if(!session.running)return;if(!settings.playToEnd)session.elapsed=sessionElapsedNow();captureMediaProgress(session.phase);
+  if(checkSessionBoundaries())return;
   if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}else paintTimeline(session.elapsed,settings.totalMinutes*60);
   if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}updateMediaPosition();
 }
-function paintTimeline(cur,dur){const pct=clamp((cur/(dur||1))*100,0,100);$('timelineFill').style.width=`${pct}%`;$('timelineThumb').style.left=`${pct}%`;$('elapsedText').textContent=fmt(cur);$('totalText').textContent=settings.playToEnd?(Number.isFinite(dur)?fmt(dur):'--:--'):fmt(dur)}
+function paintTimeline(cur,dur){
+  cur=clamp(Number(cur)||0,0,Number(dur)||0);const pct=clamp((cur/(dur||1))*100,0,100);$('timelineFill').style.width=`${pct}%`;$('timelineThumb').style.left=`${pct}%`;
+  if(settings.playToEnd){$('elapsedText').textContent=`当前 ${fmt(cur)}`;$('totalText').textContent=`总长 ${Number.isFinite(dur)&&dur>1?fmt(dur):'--:--'}`}
+  else{$('elapsedText').textContent=`已播 ${fmt(cur)}`;$('totalText').textContent=`剩余 ${fmt(Math.max(0,dur-cur))}`}
+}
 function setPlayIcon(playing){$('playSvg').innerHTML=playing?'<path d="M6 5h4v14H6zm8 0h4v14h-4z"/>':'<path d="M8 5v14l11-7z"/>';$('playBtn').setAttribute('aria-label',playing?'暂停':'播放')}
 function updateStartButton(){const ok1=candidateTracks(1).length>0&&(!settings.manualMode||!!settings.p1Track),ok2=settings.p2Type==='none'||(candidateTracks(2).length>0&&(!settings.manualMode||!!settings.p2Track));$('playBtn').disabled=!session.has&&!(ok1&&ok2)}
 $('playBtn').onclick=togglePlayback;$('seekBack').onclick=()=>seekActive(-15);$('seekForward').onclick=()=>seekActive(15);$('nextBtn').onclick=()=>session.has?playNext(session.phase):toast('尚未开始播放');
 function seekActive(delta){if(!session.has)return;const p=activePlayer();p.currentTime=clamp((p.currentTime||0)+delta,0,Number.isFinite(p.duration)?p.duration:Infinity);activeRuntime().lastMediaTime=p.currentTime||0;persistTrackProgress(session.phase,true);saveSessionState();updateMediaPosition()}
-let dragging=false;$('timelineTrack').onpointerdown=e=>{if(!session.has)return;dragging=true;$('timelineTrack').setPointerCapture(e.pointerId)};
-$('timelineTrack').onpointerup=e=>{if(!dragging)return;dragging=false;const r=$('timelineTrack').getBoundingClientRect(),ratio=clamp((e.clientX-r.left)/r.width,0,1);if(settings.playToEnd){const p=activePlayer();if(Number.isFinite(p.duration)){p.currentTime=p.duration*ratio;activeRuntime().lastMediaTime=p.currentTime}}else{session.elapsed=settings.totalMinutes*60*ratio;session.startMs=Date.now()-session.elapsed*1000;if(session.phase===1&&settings.p2Type!=='none'&&session.elapsed>=settings.switchMinutes*60)switchPhase()}tick();persistTrackProgress(session.phase,true);saveSessionState()};
-Object.entries(runtimes).forEach(([phase,r])=>{const n=Number(phase);r.player.addEventListener('timeupdate',()=>captureMediaProgress(n));r.player.addEventListener('seeking',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('seeked',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('ended',()=>handleEnded(n));r.player.addEventListener('error',()=>{if(r.player.src&&!r.loading)handleAudioError(n,new Error('文件损坏或格式不受支持'))})});
+function timedSeekPlan(targetElapsed){
+  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,elapsed=clamp(Number(targetElapsed)||0,0,total),switchAt=clamp((Number(settings.switchMinutes)||0)*60,0,total);
+  const hasPhase2=settings.p2Type!=='none'&&!!session.phaseTracks[2],phase=hasPhase2&&elapsed>=switchAt?2:1;
+  return {total,elapsed,phase,mediaTime:Math.max(0,phase===2?elapsed-switchAt:elapsed)};
+}
+async function seekTimedSession(targetElapsed){
+  if(!session.has||settings.playToEnd)return;
+  if(session.switching||session.finishing){toast('正在切换节目，请稍候');restoreTimelineView();return}
+  const plan=timedSeekPlan(targetElapsed),wasRunning=session.running,oldPhase=session.phase,oldElapsed=session.elapsed,oldStartMs=session.startMs,oldRuntime=runtimes[oldPhase];
+  session.switching=true;stopTicker();captureMediaProgress(oldPhase);flushPlayTime();await persistTrackProgress(oldPhase,true);Object.values(runtimes).forEach(r=>r.player.pause());
+  try{
+    session.elapsed=plan.elapsed;session.startMs=Date.now()-plan.elapsed*1000;session.phase=plan.phase;
+    const targetRuntime=runtimes[plan.phase],trackId=session.phaseTracks[plan.phase];if(!trackId)throw new Error('目标阶段没有可用节目');
+    if(targetRuntime.trackId!==trackId)await loadTrack(plan.phase,trackId,plan.mediaTime);
+    else{
+      const p=targetRuntime.player,max=Number.isFinite(p.duration)?Math.max(0,p.duration-.1):plan.mediaTime;
+      p.currentTime=clamp(plan.mediaTime,0,max);targetRuntime.lastMediaTime=p.currentTime||0;updateNowPlaying(targetRuntime.meta,plan.phase);updateMediaSession(targetRuntime.meta);
+    }
+    Object.entries(runtimes).forEach(([phase,r])=>r.player.volume=Number(phase)===plan.phase?1:0);session.switching=false;consecutiveErrors=0;
+    if(wasRunning){session.running=true;await targetRuntime.player.play();startTicker()}else{session.running=false;paintTimeline(plan.elapsed,plan.total);updateNowPlaying(targetRuntime.meta,plan.phase)}
+    await persistTrackProgress(plan.phase,true);saveSessionState();updateMediaPlaybackState();updateMediaPosition();
+  }catch(err){
+    session.phase=oldPhase;session.elapsed=oldElapsed;session.startMs=oldStartMs;session.switching=false;
+    if(wasRunning&&oldRuntime?.trackId){try{session.running=true;await oldRuntime.player.play();startTicker()}catch{}}
+    restoreTimelineView();toast(`定位失败：${err.message}`,3000);
+  }
+}
+function timelineRatio(e){const r=$('timelineTrack').getBoundingClientRect();return clamp((e.clientX-r.left)/r.width,0,1)}
+function previewTimeline(ratio){
+  if(settings.playToEnd){const p=activePlayer(),dur=Number.isFinite(p.duration)?p.duration:1;paintTimeline(dur*ratio,dur)}
+  else paintTimeline(settings.totalMinutes*60*ratio,settings.totalMinutes*60);
+}
+function restoreTimelineView(){
+  if(!session.has){paintTimeline(0,settings.playToEnd?1:settings.totalMinutes*60);return}
+  if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}
+  else paintTimeline(session.elapsed,settings.totalMinutes*60);
+}
+let dragging=false;$('timelineTrack').onpointerdown=e=>{if(!session.has)return;dragging=true;$('timelineTrack').setPointerCapture(e.pointerId);previewTimeline(timelineRatio(e))};
+$('timelineTrack').onpointermove=e=>{if(dragging)previewTimeline(timelineRatio(e))};
+$('timelineTrack').onpointercancel=()=>{dragging=false;restoreTimelineView()};
+$('timelineTrack').onpointerup=async e=>{
+  if(!dragging)return;dragging=false;const ratio=timelineRatio(e);
+  if(settings.playToEnd){const p=activePlayer();if(Number.isFinite(p.duration)){p.currentTime=p.duration*ratio;activeRuntime().lastMediaTime=p.currentTime||0;await persistTrackProgress(session.phase,true);saveSessionState();updateMediaPosition();paintTimeline(p.currentTime,p.duration)}}
+  else await seekTimedSession(settings.totalMinutes*60*ratio);
+};
+Object.entries(runtimes).forEach(([phase,r])=>{const n=Number(phase);r.player.addEventListener('timeupdate',()=>{captureMediaProgress(n);if(n===session.phase)checkSessionBoundaries()});r.player.addEventListener('seeking',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('seeked',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('ended',()=>handleEnded(n));r.player.addEventListener('error',()=>{if(r.player.src&&!r.loading)handleAudioError(n,new Error('文件损坏或格式不受支持'))})});
 
 /* ---------- 会话恢复 ---------- */
 function saveSessionState(){
