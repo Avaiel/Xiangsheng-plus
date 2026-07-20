@@ -26,11 +26,6 @@ body{overflow:hidden}
   height:100vh;height:100dvh;display:flex;flex-direction:column;
   padding:env(safe-area-inset-top,12px) 14px 0;
 }
-/*
- * Android TWA 的手势导航区经常把 safe-area-inset-bottom 报为 0。
- * 因此在实际滚动容器中始终预留底部空间，使最后一排播放按钮
- * 可以完整滚动到系统手势条上方。
- */
 .scroll-main{
   min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;
   padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));
@@ -235,8 +230,6 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .empty.compact{padding:14px 8px}
 @media(max-width:430px){.artist-head,.series-head{align-items:flex-start}.group-actions{max-width:132px;flex-wrap:wrap;justify-content:flex-end}.tiny{padding:5px 6px}.library-tip{width:100%;margin-left:0}}
 
-
-
 /* V1.2.4 稳定性、更新与回收站 */
 .status-banner{
   display:none;align-items:flex-start;gap:9px;margin:0 2px 10px;padding:10px 11px;
@@ -430,6 +423,10 @@ input[type=file]{display:none}
       <button class="toggle" id="denoiseToggle" aria-label="老录音优化"></button>
     </div>
     <div class="setting-row">
+      <div class="setting-main"><div class="setting-name">摇一摇延时</div><div class="setting-desc">快结束时闭着眼睛轻轻摇晃手机，自动延长 15 分钟。</div></div>
+      <button class="toggle" id="shakeToggle" aria-label="摇一摇延时"></button>
+    </div>
+    <div class="setting-row">
       <div class="setting-main"><div class="setting-name">淡出时长</div><div class="setting-desc">到点结束时的音量下降时间。</div></div>
       <select class="select" id="fadeDuration" style="width:105px"><option value="1000">1 秒</option><option value="2500">2.5 秒</option><option value="5000">5 秒</option><option value="10000">10 秒</option></select>
     </div>
@@ -509,7 +506,8 @@ const DEFAULT_SETTINGS={
   p1Type:'duo',p1Artist:'*',p1Series:'*',p1Track:'',
   p2Type:'solo',p2Artist:'*',p2Series:'*',p2Track:'',
   manualMode:false,fadeEnabled:true,denoiseOn:false,fadeMs:2500,
-  totalMinutes:20,playToEnd:false,switchMinutes:1
+  totalMinutes:20,playToEnd:false,switchMinutes:1,
+  shakeEnabled:false
 };
 
 const $=id=>document.getElementById(id);
@@ -801,6 +799,7 @@ function sanitizeSettings(raw){
     for(const key of ['Artist','Series','Track'])if(typeof s[`p${phase}${key}`]!=='string')s[`p${phase}${key}`]=DEFAULT_SETTINGS[`p${phase}${key}`];
   }
   s.manualMode=!!s.manualMode;s.fadeEnabled=s.fadeEnabled!==false;s.denoiseOn=!!s.denoiseOn;
+  s.shakeEnabled=!!s.shakeEnabled;
   s.fadeMs=[1000,2500,5000,10000].includes(Number(s.fadeMs))?Number(s.fadeMs):2500;
   s.totalMinutes=clamp(Number(s.totalMinutes)||20,1,720);s.playToEnd=!!s.playToEnd;s.switchMinutes=clamp(Number(s.switchMinutes)||1,1,Math.max(1,s.totalMinutes-1));s.schemaVersion=12;return s;
 }
@@ -852,6 +851,7 @@ function updateModeUI(){
   $('switchSlider').max=Math.max(1,(settings.totalMinutes||20)-1);settings.switchMinutes=clamp(Number(settings.switchMinutes)||1,1,Number($('switchSlider').max));
   $('switchSlider').value=settings.switchMinutes;$('switchText').textContent=`${settings.switchMinutes} 分钟`;
   $('manualToggle').classList.toggle('on',settings.manualMode);$('fadeToggle').classList.toggle('on',settings.fadeEnabled);$('denoiseToggle').classList.toggle('on',settings.denoiseOn);$('fadeDuration').value=String(settings.fadeMs);
+  $('shakeToggle').classList.toggle('on',settings.shakeEnabled);
   document.querySelectorAll('#timerGrid .pill').forEach(b=>{const m=b.dataset.min;b.classList.toggle('active',settings.playToEnd?m==='-1':Number(m)===Number(settings.totalMinutes))});
   if(settings.playToEnd){$('elapsedText').textContent='当前 00:00';$('totalText').textContent='总长 --:--'}else{$('elapsedText').textContent='已播 00:00';$('totalText').textContent=`剩余 ${fmt(settings.totalMinutes*60)}`}updateStartButton();
 }
@@ -1337,6 +1337,77 @@ async function registerServiceWorker(){
 async function checkForUpdates(){if(!swRegistration)await registerServiceWorker();try{await swRegistration?.update();if(swRegistration?.waiting)showUpdateBanner(swRegistration);else toast('已检查更新，当前已是可用的最新版本')}catch(err){recordDiagnostic('check-update',err);toast('检查更新失败')}
 }
 $('updateNowBtn').onclick=()=>{const worker=swRegistration?.waiting;if(worker){worker.postMessage({type:'SKIP_WAITING'});$('updateText').textContent='正在切换到新版本…'}else toast('更新尚未准备完成')};$('updateLaterBtn').onclick=()=>$('updateBanner').classList.remove('show');$('checkUpdateBtn').onclick=checkForUpdates;
+
+/* ---------- 摇一摇延时引擎 ---------- */
+let lastShakeTime = 0;
+let lastX = null, lastY = null, lastZ = null;
+const SHAKE_THRESHOLD = 15; // 灵敏度阈值
+
+function handleDeviceMotion(e) {
+  if (!settings.shakeEnabled || !session.running || settings.playToEnd) return;
+  const acc = e.accelerationIncludingGravity;
+  if (!acc) return;
+  
+  if (lastX === null) {
+    lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+    return;
+  }
+  
+  const deltaX = Math.abs(acc.x - lastX);
+  const deltaY = Math.abs(acc.y - lastY);
+  const deltaZ = Math.abs(acc.z - lastZ);
+  
+  if (deltaX + deltaY + deltaZ > SHAKE_THRESHOLD) {
+    const now = Date.now();
+    if (now - lastShakeTime > 3000) { 
+      lastShakeTime = now;
+      triggerShakeExtension();
+    }
+  }
+  lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+}
+
+function triggerShakeExtension() {
+  settings.totalMinutes += 15; 
+  saveSettings();
+  
+  const p = activePlayer();
+  if (p && p.volume < 1) fadeVolume(p, p.volume, 1, 1000); 
+  
+  scheduleBoundaryTimer(); 
+  if (navigator.vibrate) navigator.vibrate(50);
+  toast('👋 摇晃成功！定时已延长 15 分钟', 3000);
+}
+
+$('shakeToggle').onclick = async () => {
+  if (!settings.shakeEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+    try {
+      const permission = await DeviceMotionEvent.requestPermission();
+      if (permission !== 'granted') {
+        toast('需要动作传感器权限才能识别摇一摇哦');
+        return;
+      }
+    } catch (err) {
+      toast('权限请求失败，请确保网站开启了 HTTPS');
+      return;
+    }
+  }
+  
+  settings.shakeEnabled = !settings.shakeEnabled;
+  saveSettings();
+  
+  if (settings.shakeEnabled) {
+    window.addEventListener('devicemotion', handleDeviceMotion);
+    toast('摇一摇延时已开启');
+  } else {
+    window.removeEventListener('devicemotion', handleDeviceMotion);
+    lastX = null; 
+  }
+};
+
+if (settings.shakeEnabled) {
+  window.addEventListener('devicemotion', handleDeviceMotion);
+}
 
 /* ---------- 入口 ---------- */
 $('btnStats').onclick=()=>{renderStats();openSheet('statsSheet')};
