@@ -1,4 +1,5 @@
-const CACHE_NAME = 'xiangsheng-cache-v123-20260720';
+const SW_VERSION = '1.2.4';
+const CACHE_NAME = `xiangsheng-cache-v124-20260720`;
 const APP_SHELL = [
   './',
   './index.html',
@@ -13,7 +14,6 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(APP_SHELL))
-      .then(() => self.skipWaiting())
   );
 });
 
@@ -22,7 +22,15 @@ self.addEventListener('activate', event => {
     caches.keys()
       .then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
       .then(() => self.clients.claim())
+      .then(async () => {
+        const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+        clients.forEach(client => client.postMessage({ type: 'SW_ACTIVATED', version: SW_VERSION }));
+      })
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 async function networkFirst(request) {

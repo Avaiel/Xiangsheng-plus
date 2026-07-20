@@ -219,6 +219,32 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .empty.compact{padding:14px 8px}
 @media(max-width:430px){.artist-head,.series-head{align-items:flex-start}.group-actions{max-width:132px;flex-wrap:wrap;justify-content:flex-end}.tiny{padding:5px 6px}.library-tip{width:100%;margin-left:0}}
 
+
+
+/* V1.2.4 稳定性、更新与回收站 */
+.status-banner{
+  display:none;align-items:flex-start;gap:9px;margin:0 2px 10px;padding:10px 11px;
+  border-radius:13px;border:1px solid #774b32;background:#2b1d14;color:var(--ink);
+  box-shadow:var(--shadow);font-size:11px;line-height:1.45
+}
+.status-banner.show{display:flex}.status-banner.error{border-color:#7a4039;background:#2c1916}
+.status-banner-main{min-width:0;flex:1}.status-banner-title{font-size:12px;font-weight:750}.status-banner-sub{color:var(--dim);margin-top:2px}
+.status-banner-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.update-banner{
+  display:none;position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  width:min(460px,calc(100% - 28px));z-index:260;background:#2d2017;border:1px solid var(--ember);
+  border-radius:15px;padding:11px 12px;box-shadow:var(--shadow);align-items:center;gap:10px
+}
+.update-banner.show{display:flex}.update-main{min-width:0;flex:1}.update-title{font-size:13px;font-weight:750}.update-sub{font-size:10px;color:var(--dim);margin-top:2px}
+.diag-summary{background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:11px;margin-bottom:10px;font-size:11px;line-height:1.55}
+.diag-row{display:flex;gap:8px;align-items:flex-start;padding:9px 2px;border-bottom:1px solid var(--line);font-size:11px}
+.diag-row:last-child{border-bottom:0}.diag-icon{width:18px;flex:0 0 18px;text-align:center}.diag-ok{color:#8dbb8d}.diag-warn{color:#e0aa66}.diag-bad{color:#e18475}
+.trash-item{background:var(--bg);border:1px solid var(--line);border-radius:13px;padding:11px;margin-bottom:9px}
+.trash-head{display:flex;align-items:center;gap:8px}.trash-title{font-size:13px;font-weight:700;min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trash-meta{font-size:10px;color:var(--dim);margin-top:5px;line-height:1.45}.trash-actions{display:flex;gap:7px;margin-top:9px;flex-wrap:wrap}
+.version-chip{font-size:10px;color:var(--ember2);border:1px solid var(--ember-dark);border-radius:10px;padding:4px 7px;white-space:nowrap}
+.track.missing-blob{opacity:.62}.track.missing-blob .track-title::after{content:" · 文件缺失";color:#e18475;font-size:10px}
+
 input[type=file]{display:none}
 @media(min-width:720px){
   .app{max-width:520px;margin:auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
@@ -229,12 +255,17 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.3 · 换一段按钮修复</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4 · 稳定性与数据保护</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
       <button class="icon-btn" id="btnSettings" aria-label="设置"><svg viewBox="0 0 24 24"><path d="M19.4 13a7.6 7.6 0 0 0 .05-1 7.6 7.6 0 0 0-.05-1l2.1-1.65-2-3.46-2.52 1a7.9 7.9 0 0 0-1.72-1L14.88 3h-4l-.38 2.89a7.9 7.9 0 0 0-1.72 1l-2.52-1-2 3.46L6.36 11a7.6 7.6 0 0 0-.05 1 7.6 7.6 0 0 0 .05 1l-2.1 1.65 2 3.46 2.52-1a7.9 7.9 0 0 0 1.72 1l.38 2.89h4l.38-2.89a7.9 7.9 0 0 0 1.72-1l2.52 1 2-3.46L19.4 13zM12.88 19h-1.76l-.32-2.43-.64-.23a5.8 5.8 0 0 1-1.42-.82l-.52-.43-2.12.84-.88-1.52 1.77-1.39-.12-.67a5.5 5.5 0 0 1 0-1.7l.12-.67-1.77-1.39.88-1.52 2.12.84.52-.43a5.8 5.8 0 0 1 1.42-.82l.64-.23L11.12 5h1.76l.32 2.43.64.23a5.8 5.8 0 0 1 1.42.82l.52.43 2.12-.84.88 1.52-1.77 1.39.12.67a5.5 5.5 0 0 1 0 1.7l-.12.67 1.77 1.39-.88 1.52-2.12-.84-.52.43a5.8 5.8 0 0 1-1.42.82l-.64.23L12.88 19zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/></svg></button>
     </div>
+  </div>
+
+  <div class="status-banner error" id="errorBanner" role="alert">
+    <div class="status-banner-main"><div class="status-banner-title">部分功能运行异常</div><div class="status-banner-sub" id="errorBannerText">可以先自动修复界面状态，不会删除音频或统计数据。</div></div>
+    <div class="status-banner-actions"><button class="tiny" id="autoRepairBtn">自动修复</button><button class="tiny" id="openDiagnosticsBtn">详情</button></div>
   </div>
 
   <div class="scroll-main">
@@ -381,11 +412,48 @@ input[type=file]{display:none}
       <button class="small-btn" id="snapshotNowBtn">立即快照</button>
     </div>
     <div class="setting-row">
+      <div class="setting-main"><div class="setting-name">回收站</div><div class="setting-desc" id="trashDesc">误删的节目、作品和艺术家保留 7 天，音频文件也会一起保留。</div></div>
+      <button class="small-btn" id="trashBtn">查看</button>
+    </div>
+    <div class="setting-row">
+      <div class="setting-main"><div class="setting-name">运行自检与诊断</div><div class="setting-desc" id="healthDesc">检查关键按钮、设置、数据库关系和音频文件索引。</div></div>
+      <div class="button-row"><button class="small-btn" id="selfCheckBtn">自检</button><button class="small-btn" id="copyDiagBtn">复制诊断</button></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-main"><div class="setting-name">界面安全修复</div><div class="setting-desc">重置折叠、搜索和临时界面状态，不删除资料库、统计或备份。</div></div>
+      <div class="button-row"><button class="small-btn" id="resetUiBtn">重置界面</button><button class="small-btn" id="safeModeBtn">安全重启</button></div>
+    </div>
+    <div class="setting-row">
+      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4 · Schema 12</div></div>
+      <button class="small-btn" id="checkUpdateBtn">检查更新</button>
+    </div>
+    <div class="setting-row">
       <div class="setting-main"><div class="setting-name">清除上次播放进度</div><div class="setting-desc">只删除会话恢复点，不影响播放时长和热力图。</div></div>
       <button class="small-btn danger" id="clearSessionBtn">清除</button>
     </div>
   </div>
 </div></div>
+
+
+<!-- 回收站 -->
+<div class="overlay" id="trashSheet"><div class="sheet">
+  <button class="close" data-close="trashSheet">✕</button><h2 class="sheet-title">回收站</h2>
+  <div class="button-row" style="margin-bottom:10px"><button class="small-btn" id="purgeExpiredBtn">清理过期内容</button><button class="small-btn danger" id="emptyTrashBtn">清空回收站</button></div>
+  <div class="sheet-scroll" id="trashList"></div>
+</div></div>
+
+<!-- 运行诊断 -->
+<div class="overlay" id="diagnosticsSheet"><div class="sheet">
+  <button class="close" data-close="diagnosticsSheet">✕</button><h2 class="sheet-title">运行诊断</h2>
+  <div class="diag-summary" id="diagSummary">尚未运行自检。</div>
+  <div class="button-row" style="margin-bottom:10px"><button class="small-btn primary" id="runDiagBtn">重新自检</button><button class="small-btn" id="repairDataBtn">修复可修复项</button><button class="small-btn" id="copyDiagSheetBtn">复制</button></div>
+  <div class="sheet-scroll" id="diagList"></div>
+</div></div>
+
+<div class="update-banner" id="updateBanner">
+  <div class="update-main"><div class="update-title">发现新版本</div><div class="update-sub" id="updateText">新版本已下载，更新不会清除本地音频和统计。</div></div>
+  <button class="small-btn primary" id="updateNowBtn">立即更新</button><button class="small-btn" id="updateLaterBtn">稍后</button>
+</div>
 
 <audio id="phase1Audio" preload="metadata"></audio>
 <audio id="phase2Audio" preload="metadata"></audio>
@@ -393,7 +461,7 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.3';
+const APP_VERSION='1.2.4';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
@@ -406,6 +474,10 @@ const MIRROR_SUFFIX='_mirror_v12';
 const COLLAPSE_KEY='xs_library_collapse_v12';
 const MIGRATION_KEY='xs_v12_migration_notice';
 const MAX_SNAPSHOTS=20;
+const DIAG_KEY='xs_diagnostic_log_v124';
+const SAFE_MODE_KEY='xs_safe_mode_once_v124';
+const TRASH_RETENTION_MS=7*24*60*60*1000;
+const REQUIRED_STORES=['groups','trackMeta','trackBlob','artists','series','trash','trashPayload'];
 const DEFAULT_SETTINGS={
   schemaVersion:12,
   p1Type:'duo',p1Artist:'*',p1Series:'*',p1Track:'',
@@ -455,12 +527,27 @@ function normalizeTitle(name){return String(name||'').replace(AUDIO_EXT,'').trim
 let toastTimer;
 function toast(msg,ms=2400){const el=$('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),ms)}
 function openSheet(id){$(id).classList.add('show')}
-function closeSheet(id){$(id).classList.remove('show')}
+function closeSheet(id){const el=$(id);if(el)el.classList.remove('show')}
+function normalizeError(error){
+  if(error instanceof Error)return {name:error.name,message:error.message,stack:error.stack||''};
+  if(error&&typeof error==='object')return {name:error.name||'Error',message:error.message||JSON.stringify(error),stack:error.stack||''};
+  return {name:'Error',message:String(error||'未知错误'),stack:''};
+}
+function diagnosticLogs(){const logs=readJson(DIAG_KEY,[]);return Array.isArray(logs)?logs:[]}
+function recordDiagnostic(source,error,context={}){
+  const e=normalizeError(error),entry={id:makeId(),time:Date.now(),version:APP_VERSION,source,name:e.name,message:e.message,stack:e.stack,context};
+  const logs=diagnosticLogs();logs.unshift(entry);writeJson(DIAG_KEY,logs.slice(0,40));
+  const banner=$('errorBanner'),text=$('errorBannerText');if(banner){banner.classList.add('show');if(text)text.textContent=`${source}：${e.message}`}
+  console.error(`[${source}]`,error,context);return entry;
+}
+function clearErrorBanner(){const banner=$('errorBanner');if(banner)banner.classList.remove('show')}
+window.addEventListener('error',event=>recordDiagnostic('window.error',event.error||new Error(event.message),{file:event.filename,line:event.lineno,column:event.colno}));
+window.addEventListener('unhandledrejection',event=>recordDiagnostic('unhandledrejection',event.reason));
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>closeSheet(b.dataset.close));
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)closeSheet(o.id)}));
 
 /* ---------- IndexedDB：类型 → 艺术家 → 作品/系列 → 节目 ---------- */
-const DB_NAME='xiangsheng-db',DB_VERSION=5;
+const DB_NAME='xiangsheng-db',DB_VERSION=6;
 let dbPromise;
 function requestToPromise(req){return new Promise((resolve,reject)=>{req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
 function txDone(tx){return new Promise((resolve,reject)=>{tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error)})}
@@ -481,6 +568,9 @@ function openDB(){
       ensureIndex(artists,'type','type');
       let series=db.objectStoreNames.contains('series')?tx.objectStore('series'):db.createObjectStore('series',{keyPath:'id'});
       ensureIndex(series,'type','type');ensureIndex(series,'artistId','artistId');ensureIndex(series,'legacyGroupId','legacyGroupId');
+      let trash=db.objectStoreNames.contains('trash')?tx.objectStore('trash'):db.createObjectStore('trash',{keyPath:'id'});
+      ensureIndex(trash,'expiresAt','expiresAt');ensureIndex(trash,'kind','kind');
+      if(!db.objectStoreNames.contains('trashPayload'))db.createObjectStore('trashPayload',{keyPath:'id'});
       if(e.oldVersion<4){
         ['duo','solo','story'].forEach(type=>{
           if(!db.objectStoreNames.contains(type))return;
@@ -496,13 +586,16 @@ function openDB(){
         });
       }
     };
-    req.onsuccess=()=>resolve(req.result);
-    req.onerror=()=>reject(req.error);
+    req.onsuccess=()=>{const db=req.result;db.onversionchange=()=>db.close();resolve(db)};
+    req.onblocked=()=>recordDiagnostic('indexeddb-blocked',new Error('数据库升级被其他页面占用，请关闭其他页面后重试'));
+    req.onerror=()=>{dbPromise=null;reject(req.error)};
   });
   return dbPromise;
 }
 async function getAll(store){const db=await openDB(),tx=db.transaction(store,'readonly');return requestToPromise(tx.objectStore(store).getAll())}
+async function getAllKeys(store){const db=await openDB(),tx=db.transaction(store,'readonly');return requestToPromise(tx.objectStore(store).getAllKeys())}
 async function getBlob(id){const db=await openDB(),tx=db.transaction('trackBlob','readonly');return requestToPromise(tx.objectStore('trackBlob').get(id))}
+async function getTrashPayload(id){const db=await openDB(),tx=db.transaction('trashPayload','readonly');return requestToPromise(tx.objectStore('trashPayload').get(id))}
 async function putRecord(store,value){const db=await openDB(),tx=db.transaction(store,'readwrite');tx.objectStore(store).put(value);await txDone(tx)}
 async function deleteRecords(stores,work){const db=await openDB(),tx=db.transaction(stores,'readwrite');work(tx);await txDone(tx)}
 
@@ -594,17 +687,57 @@ async function moveSeries(id,newArtistId){
   const db=await openDB(),tx=db.transaction(['series','trackMeta'],'readwrite');tx.objectStore('series').put(s);
   affected.forEach(t=>tx.objectStore('trackMeta').put({...t,artistId:newArtistId}));await txDone(tx);await refreshLibrary();
 }
+function trashLabel(item){return item.label||`${item.kind==='artist'?'艺术家':item.kind==='series'?'作品':'节目'} · 未命名`}
+async function stopIfDeletingTrackIds(ids){
+  try{if(typeof session!=='undefined'&&session.has&&typeof runtimes!=='undefined'&&Object.values(runtimes).some(r=>ids.has(r.trackId)))await finishSession('当前播放内容已移入回收站')}catch(err){recordDiagnostic('trash-stop-playback',err)}
+}
 async function deleteTrack(id){
-  await deleteRecords(['trackMeta','trackBlob'],tx=>{tx.objectStore('trackMeta').delete(id);tx.objectStore('trackBlob').delete(id)});await refreshLibrary();
+  const track=library.tracks.find(t=>t.id===id);if(!track)return;await stopIfDeletingTrackIds(new Set([id]));const record=await getBlob(id);
+  const trashId=makeId(),now=Date.now(),payload={track:{...track},blob:record?.blob||null},item={id:trashId,kind:'track',label:`节目 · ${track.title||'未命名'}`,count:1,size:Number(track.size)||0,deletedAt:now,expiresAt:now+TRASH_RETENTION_MS};
+  const db=await openDB(),tx=db.transaction(['trash','trashPayload','trackMeta','trackBlob'],'readwrite');tx.objectStore('trash').put(item);tx.objectStore('trashPayload').put({id:trashId,payload});tx.objectStore('trackMeta').delete(id);tx.objectStore('trackBlob').delete(id);await txDone(tx);await refreshLibrary();await updateTrashCount();
 }
 async function deleteSeries(id){
-  const tracks=library.tracks.filter(t=>t.seriesId===id);
-  await deleteRecords(['series','trackMeta','trackBlob'],tx=>{tx.objectStore('series').delete(id);tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)})});await refreshLibrary();
+  const series=library.series.find(s=>s.id===id);if(!series)return;const tracks=library.tracks.filter(t=>t.seriesId===id),payloadTracks=[];await stopIfDeletingTrackIds(new Set(tracks.map(t=>t.id)));
+  for(const track of tracks){const record=await getBlob(track.id);payloadTracks.push({track:{...track},blob:record?.blob||null})}
+  const trashId=makeId(),now=Date.now(),payload={series:{...series},tracks:payloadTracks},item={id:trashId,kind:'series',label:`作品 · ${series.name||'未命名'}`,count:tracks.length,size:tracks.reduce((s,t)=>s+(Number(t.size)||0),0),deletedAt:now,expiresAt:now+TRASH_RETENTION_MS};
+  const db=await openDB(),tx=db.transaction(['trash','trashPayload','series','trackMeta','trackBlob'],'readwrite');tx.objectStore('trash').put(item);tx.objectStore('trashPayload').put({id:trashId,payload});tx.objectStore('series').delete(id);tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)});await txDone(tx);await refreshLibrary();await updateTrashCount();
 }
 async function deleteArtist(id){
-  const series=library.series.filter(s=>s.artistId===id),ids=new Set(series.map(s=>s.id)),tracks=library.tracks.filter(t=>ids.has(t.seriesId));
-  await deleteRecords(['artists','series','trackMeta','trackBlob'],tx=>{tx.objectStore('artists').delete(id);series.forEach(s=>tx.objectStore('series').delete(s.id));tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)})});await refreshLibrary();
+  const artist=library.artists.find(a=>a.id===id);if(!artist)return;const series=library.series.filter(s=>s.artistId===id),ids=new Set(series.map(s=>s.id)),tracks=library.tracks.filter(t=>ids.has(t.seriesId)),payloadTracks=[];await stopIfDeletingTrackIds(new Set(tracks.map(t=>t.id)));
+  for(const track of tracks){const record=await getBlob(track.id);payloadTracks.push({track:{...track},blob:record?.blob||null})}
+  const trashId=makeId(),now=Date.now(),payload={artist:{...artist},series:series.map(s=>({...s})),tracks:payloadTracks},item={id:trashId,kind:'artist',label:`艺术家 · ${artist.name||'未命名'}`,count:tracks.length,size:tracks.reduce((s,t)=>s+(Number(t.size)||0),0),deletedAt:now,expiresAt:now+TRASH_RETENTION_MS};
+  const db=await openDB(),tx=db.transaction(['trash','trashPayload','artists','series','trackMeta','trackBlob'],'readwrite');tx.objectStore('trash').put(item);tx.objectStore('trashPayload').put({id:trashId,payload});tx.objectStore('artists').delete(id);series.forEach(s=>tx.objectStore('series').delete(s.id));tracks.forEach(t=>{tx.objectStore('trackMeta').delete(t.id);tx.objectStore('trackBlob').delete(t.id)});await txDone(tx);await refreshLibrary();await updateTrashCount();
 }
+async function ensureRestoreRelations(tx,track){
+  const artist=library.artists.find(a=>a.id===track.artistId),series=library.series.find(s=>s.id===track.seriesId);
+  if(!artist){const fallback={id:unknownArtistId(track.type),type:track.type,name:'未设置艺术家',createdAt:Date.now(),system:true};tx.objectStore('artists').put(fallback);track.artistId=fallback.id}
+  if(!series){const fallback={id:`v124-restored-${track.type}-${makeId()}`,type:track.type,artistId:track.artistId,name:'恢复的未分类作品',playMode:defaultSeriesMode(track.type),currentTrackId:null,createdAt:Date.now()};tx.objectStore('series').put(fallback);track.seriesId=fallback.id}
+}
+async function restoreTrashItem(id){
+  const items=await getAll('trash'),item=items.find(x=>x.id===id);if(!item)return;const payloadRecord=await getTrashPayload(id),p=payloadRecord?.payload||{};
+  const db=await openDB(),tx=db.transaction(['trash','trashPayload','artists','series','trackMeta','trackBlob'],'readwrite');
+  if(item.kind==='artist'){
+    if(p.artist)tx.objectStore('artists').put(p.artist);(p.series||[]).forEach(s=>tx.objectStore('series').put(s));(p.tracks||[]).forEach(x=>{tx.objectStore('trackMeta').put({...x.track,missingBlob:!x.blob});if(x.blob)tx.objectStore('trackBlob').put({id:x.track.id,blob:x.blob})});
+  }else if(item.kind==='series'){
+    const series={...p.series};if(series&&!library.artists.some(a=>a.id===series.artistId)){series.artistId=unknownArtistId(series.type);tx.objectStore('artists').put({id:series.artistId,type:series.type,name:'未设置艺术家',createdAt:Date.now(),system:true})}if(series)tx.objectStore('series').put(series);(p.tracks||[]).forEach(x=>{const track={...x.track,artistId:series?.artistId||x.track.artistId};tx.objectStore('trackMeta').put({...track,missingBlob:!x.blob});if(x.blob)tx.objectStore('trackBlob').put({id:track.id,blob:x.blob})});
+  }else if(item.kind==='track'&&p.track){
+    const track={...p.track};let artist=library.artists.find(a=>a.id===track.artistId);if(!artist){artist={id:unknownArtistId(track.type),type:track.type,name:'未设置艺术家',createdAt:Date.now(),system:true};tx.objectStore('artists').put(artist);track.artistId=artist.id}let series=library.series.find(s=>s.id===track.seriesId);if(!series){series={id:`v124-restored-${track.type}-${makeId()}`,type:track.type,artistId:track.artistId,name:'恢复的未分类作品',playMode:defaultSeriesMode(track.type),currentTrackId:null,createdAt:Date.now()};tx.objectStore('series').put(series);track.seriesId=series.id}tx.objectStore('trackMeta').put({...track,missingBlob:!p.blob});if(p.blob)tx.objectStore('trackBlob').put({id:track.id,blob:p.blob});
+  }
+  tx.objectStore('trash').delete(id);tx.objectStore('trashPayload').delete(id);await txDone(tx);await refreshLibrary();await renderTrash();toast('已从回收站恢复');
+}
+async function permanentlyDeleteTrashItem(id){await deleteRecords(['trash','trashPayload'],tx=>{tx.objectStore('trash').delete(id);tx.objectStore('trashPayload').delete(id)});await renderTrash();await updateTrashCount()}
+async function purgeExpiredTrash(forceAll=false){
+  const now=Date.now(),items=await getAll('trash'),targets=items.filter(x=>forceAll||Number(x.expiresAt)<=now);if(!targets.length)return 0;
+  const db=await openDB(),tx=db.transaction(['trash','trashPayload'],'readwrite');targets.forEach(x=>{tx.objectStore('trash').delete(x.id);tx.objectStore('trashPayload').delete(x.id)});await txDone(tx);await updateTrashCount();return targets.length;
+}
+async function updateTrashCount(){
+  try{const items=await getAll('trash'),el=$('trashDesc');if(el)el.textContent=items.length?`${items.length} 项内容等待清理，最长保留 7 天；音频文件也在回收站中。`:'回收站为空。误删内容会保留 7 天，音频文件也会一起保留。';const b=$('trashBtn');if(b)b.textContent=items.length?`查看（${items.length}）`:'查看'}catch(err){recordDiagnostic('trash-count',err)}
+}
+async function renderTrash(){
+  const list=$('trashList');if(!list)return;list.innerHTML='';const items=(await getAll('trash')).sort((a,b)=>b.deletedAt-a.deletedAt);if(!items.length){const e=document.createElement('div');e.className='empty';e.textContent='回收站为空';list.appendChild(e);return}
+  items.forEach(item=>{const box=document.createElement('div');box.className='trash-item';const head=document.createElement('div');head.className='trash-head';const title=document.createElement('div');title.className='trash-title';title.textContent=trashLabel(item);const kind=document.createElement('span');kind.className='version-chip';kind.textContent=item.kind==='artist'?'艺术家':item.kind==='series'?'作品':'节目';head.append(title,kind);const meta=document.createElement('div');meta.className='trash-meta';const left=Math.max(0,Math.ceil((item.expiresAt-Date.now())/86400000));const count=Number(item.count)||0;meta.textContent=`${count} 个音频${item.size?` · ${formatBytes(item.size)}`:''} · 删除于 ${new Date(item.deletedAt).toLocaleString('zh-CN')} · ${left} 天后永久清理`;const actions=document.createElement('div');actions.className='trash-actions';const restore=document.createElement('button');restore.className='small-btn primary';restore.textContent='恢复';restore.onclick=()=>restoreTrashItem(item.id);const remove=document.createElement('button');remove.className='small-btn danger';remove.textContent='永久删除';remove.onclick=()=>{if(confirm(`永久删除“${trashLabel(item)}”？此操作无法恢复。`))permanentlyDeleteTrashItem(item.id)};actions.append(restore,remove);box.append(head,meta,actions);list.appendChild(box)})
+}
+
 async function updateTrackMeta(meta){await putRecord('trackMeta',meta)}
 async function updateSeriesMeta(series){await putRecord('series',series)}
 function probeDuration(file){
@@ -635,9 +768,19 @@ async function addFiles(type,artistId,seriesId,files){
 }
 
 /* ---------- 设置与主界面 ---------- */
+function sanitizeSettings(raw){
+  const s={...DEFAULT_SETTINGS,...(raw&&typeof raw==='object'&&!Array.isArray(raw)?raw:{})};
+  for(const phase of [1,2]){
+    const type=s[`p${phase}Type`];if(!['duo','solo','story',...(phase===2?['none']:[])].includes(type))s[`p${phase}Type`]=DEFAULT_SETTINGS[`p${phase}Type`];
+    for(const key of ['Artist','Series','Track'])if(typeof s[`p${phase}${key}`]!=='string')s[`p${phase}${key}`]=DEFAULT_SETTINGS[`p${phase}${key}`];
+  }
+  s.manualMode=!!s.manualMode;s.fadeEnabled=s.fadeEnabled!==false;s.denoiseOn=!!s.denoiseOn;
+  s.fadeMs=[1000,2500,5000,10000].includes(Number(s.fadeMs))?Number(s.fadeMs):2500;
+  s.totalMinutes=clamp(Number(s.totalMinutes)||20,1,720);s.playToEnd=!!s.playToEnd;s.switchMinutes=clamp(Number(s.switchMinutes)||1,1,Math.max(1,s.totalMinutes-1));s.schemaVersion=12;return s;
+}
 const oldSettings=readJson(OLD_SETTINGS_KEY,{});
-let settings={...DEFAULT_SETTINGS,...oldSettings,...readJson(SETTINGS_KEY,{})};
-settings.schemaVersion=12;
+let settings=sanitizeSettings({...oldSettings,...readJson(SETTINGS_KEY,{})});
+writeJson(SETTINGS_KEY,settings);
 function saveSettings(){writeJson(SETTINGS_KEY,settings);updateModeUI()}
 async function migrateSettingsV11(){
   if(readJson(SETTINGS_KEY,null))return;
@@ -744,7 +887,7 @@ function renderLibrary(){
     aActions.append(
       makeTiny('＋作品',()=>newSeriesForArtist(artist)),
       makeTiny('改名',async()=>{const n=prompt('新的艺术家名称',artist.name);if(n)await renameArtist(artist.id,n)}),
-      makeTiny('删除',async()=>{if(artist.system){toast('系统艺术家不可直接删除，可改名或移动作品');return}if(confirm(`删除艺术家“${artist.name}”及其全部 ${totalTracks} 集音频？\n音频删除后无法通过统计备份恢复。`)){createSnapshot('before-artist-delete');await deleteArtist(artist.id);toast('艺术家已删除')}})
+      makeTiny('删除',async()=>{if(artist.system){toast('系统艺术家不可直接删除，可改名或移动作品');return}if(confirm(`删除艺术家“${artist.name}”及其全部 ${totalTracks} 集音频？\n内容会保留在回收站 7 天。`)){createSnapshot('before-artist-delete');await deleteArtist(artist.id);toast('艺术家已移入回收站')}})
     );
     aHead.append(arrow,aName,aCount,aActions);aHead.onclick=()=>{const next=!artistCollapsed(artist.id);setArtistCollapsed(artist.id,next);renderLibrary()};artistCard.appendChild(aHead);
     const seriesList=document.createElement('div');seriesList.className='series-list';if(!q&&artistCollapsed(artist.id))seriesList.classList.add('collapsed');
@@ -774,15 +917,15 @@ function renderSeriesCard(series,q){
   const list=document.createElement('div');list.className='track-list';if(!q&&seriesCollapsed(series.id))list.classList.add('collapsed');
   if(!tracks.length){const e=document.createElement('div');e.className='empty compact';e.textContent='作品内暂无音频';list.appendChild(e)}
   tracks.forEach((track,index)=>{
-    const row=document.createElement('div');row.className=`track${track.completed?' completed':''}`;
+    const row=document.createElement('div');row.className=`track${track.completed?' completed':''}${track.missingBlob?' missing-blob':''}`;
     const number=document.createElement('span');number.className='episode-no';number.textContent=Number.isFinite(track.episodeNumber)?String(track.episodeNumber).padStart(2,'0'):String(index+1).padStart(2,'0');
     const tMain=document.createElement('div');tMain.className='track-main';
     const title=document.createElement('div');title.className='track-title';title.textContent=track.title;
     const progress=track.lastPosition>5&&track.duration>0?` · 已听 ${Math.round(track.lastPosition/track.duration*100)}%`:'';
-    const tMeta=document.createElement('div');tMeta.className='track-meta';tMeta.textContent=`${formatDuration(track.duration)} · ${formatBytes(track.size)}${track.completed?' · 已听完':progress}`;
+    const tMeta=document.createElement('div');tMeta.className='track-meta';tMeta.textContent=`${formatDuration(track.duration)} · ${formatBytes(track.size)}${track.missingBlob?' · 文件缺失':track.completed?' · 已听完':progress}`;
     tMain.append(title,tMeta);
     const acts=document.createElement('div');acts.className='track-actions';
-    acts.append(makeTiny('开场',()=>assignTrack(1,track)),makeTiny('收尾',()=>assignTrack(2,track)),makeTiny(track.completed?'未听':'已听',async()=>{track.completed=!track.completed;if(!track.completed)track.lastPosition=0;await updateTrackMeta(track);await refreshLibrary()}),makeTiny('删',async()=>{if(confirm(`删除《${track.title}》？`)){await deleteTrack(track.id);toast('节目已删除')}}));
+    acts.append(makeTiny('开场',()=>assignTrack(1,track)),makeTiny('收尾',()=>assignTrack(2,track)),makeTiny(track.completed?'未听':'已听',async()=>{track.completed=!track.completed;if(!track.completed)track.lastPosition=0;await updateTrackMeta(track);await refreshLibrary()}),makeTiny('删',async()=>{if(confirm(`删除《${track.title}》？`)){await deleteTrack(track.id);toast('节目已移入回收站')}}));
     row.append(number,tMain,acts);list.appendChild(row);
   });
   card.appendChild(list);return card;
@@ -801,7 +944,7 @@ async function seriesMenu(series){
     const tracks=library.tracks.filter(t=>t.seriesId===series.id),db=await openDB(),tx=db.transaction(['trackMeta','series'],'readwrite');
     tracks.forEach(t=>tx.objectStore('trackMeta').put({...t,completed:false,lastPosition:0}));tx.objectStore('series').put({...series,currentTrackId:null});await txDone(tx);await refreshLibrary();toast('作品进度已重置');
   }else if(choice==='4'){
-    const count=library.tracks.filter(t=>t.seriesId===series.id).length;if(confirm(`删除作品“${series.name}”及其中 ${count} 集音频？`)){createSnapshot('before-series-delete');await deleteSeries(series.id);toast('作品已删除')}
+    const count=library.tracks.filter(t=>t.seriesId===series.id).length;if(confirm(`删除作品“${series.name}”及其中 ${count} 集音频？`)){createSnapshot('before-series-delete');await deleteSeries(series.id);toast('作品已移入回收站')}
   }
 }
 async function chooseArtistForSeries(series){
@@ -829,6 +972,46 @@ async function updateStorageInfo(){
   $('storageText').textContent=`已用 ${formatBytes(usage)} / 可用约 ${formatBytes(quota)}${persisted?' · 已保护':''}`;$('persistBtn').textContent=persisted?'已保护':'保护存储';
 }
 $('persistBtn').onclick=async()=>{if(!navigator.storage?.persist){toast('当前浏览器不支持持久化存储');return}const ok=await navigator.storage.persist();await updateStorageInfo();toast(ok?'已申请持久化存储，系统更不容易清理音频':'系统暂未授予持久化存储')};
+
+/* ---------- V1.2.4 启动自检、诊断与安全修复 ---------- */
+let latestHealthReport=null;
+function healthItem(name,status,detail=''){return {name,status,detail}}
+async function runConsistencyCheck({repair=false}={}){
+  const items=[];let db;
+  try{db=await openDB();const missingStores=REQUIRED_STORES.filter(s=>!db.objectStoreNames.contains(s));items.push(healthItem('IndexedDB 表结构',missingStores.length?'bad':'ok',missingStores.length?`缺少：${missingStores.join('、')}`:'结构完整'));if(missingStores.length)return items}catch(err){items.push(healthItem('IndexedDB 打开','bad',err.message));return items}
+  const [artists,series,tracks,blobKeys]=await Promise.all([getAll('artists'),getAll('series'),getAll('trackMeta'),getAllKeys('trackBlob')]);const artistIds=new Set(artists.map(x=>x.id)),seriesIds=new Set(series.map(x=>x.id)),blobIds=new Set(blobKeys);
+  const missingRelations=tracks.filter(t=>!artistIds.has(t.artistId)||!seriesIds.has(t.seriesId)),missingBlobs=tracks.filter(t=>!blobIds.has(t.id)),orphanBlobs=blobKeys.filter(id=>!tracks.some(t=>t.id===id));
+  items.push(healthItem('艺术家/作品关系',missingRelations.length?'warn':'ok',missingRelations.length?`${missingRelations.length} 个节目关系异常`:'关系完整'));
+  items.push(healthItem('音频文件索引',missingBlobs.length?'bad':'ok',missingBlobs.length?`${missingBlobs.length} 个节目缺少音频文件`:'节目与音频对应完整'));
+  items.push(healthItem('孤立音频块',orphanBlobs.length?'warn':'ok',orphanBlobs.length?`${orphanBlobs.length} 个未关联音频块（为避免误删暂时保留）`:'无孤立音频块'));
+  const settingsRaw=readJson(SETTINGS_KEY,null),collapseRaw=readJson(COLLAPSE_KEY,null),logs=diagnosticLogs();
+  items.push(healthItem('播放设置',settingsRaw&&typeof settingsRaw==='object'&&!Array.isArray(settingsRaw)?'ok':'warn',settingsRaw?'设置可读取':'将使用默认设置'));
+  items.push(healthItem('折叠状态',collapseRaw===null||typeof collapseRaw==='object'&&!Array.isArray(collapseRaw)?'ok':'warn',collapseRaw===null?'尚未保存折叠状态':'状态可读取'));
+  items.push(healthItem('近期运行异常',logs.length?'warn':'ok',logs.length?`已记录 ${logs.length} 条，可在诊断中复制`:'暂无异常记录'));
+  if(repair){
+    const db2=await openDB(),tx=db2.transaction(['artists','series','trackMeta'],'readwrite'),aStore=tx.objectStore('artists'),sStore=tx.objectStore('series'),tStore=tx.objectStore('trackMeta'),fallbackSeries={};
+    for(const track of tracks){let next={...track};if(!artistIds.has(next.artistId)){next.artistId=unknownArtistId(next.type);aStore.put({id:next.artistId,type:next.type,name:'未设置艺术家',createdAt:Date.now(),system:true})}if(!seriesIds.has(next.seriesId)){if(!fallbackSeries[next.type])fallbackSeries[next.type]={id:`v124-repair-${next.type}-${makeId()}`,type:next.type,artistId:next.artistId,name:'自动修复的未分类作品',playMode:defaultSeriesMode(next.type),currentTrackId:null,createdAt:Date.now()};next.seriesId=fallbackSeries[next.type].id;sStore.put(fallbackSeries[next.type])}next.missingBlob=!blobIds.has(next.id);tStore.put(next)}
+    await txDone(tx);settings=sanitizeSettings(settings);writeJson(SETTINGS_KEY,settings);const c=readJson(COLLAPSE_KEY,null);if(c!==null&&(typeof c!=='object'||Array.isArray(c)))localStorage.removeItem(COLLAPSE_KEY);await refreshLibrary();items.push(healthItem('自动修复','ok','已修复关系、设置与可识别的界面状态；缺失的音频文件不会被伪造'))
+  }
+  return items;
+}
+function runSmokeTests(){
+  const criticalIds=['btnStats','btnLibrary','btnSettings','playBtn','nextBtn','timelineTrack','statsSheet','librarySheet','settingsSheet','trashSheet','diagnosticsSheet'];const missing=criticalIds.filter(id=>!$(id));const tests=[healthItem('关键界面元素',missing.length?'bad':'ok',missing.length?`缺少：${missing.join('、')}`:'全部存在')];
+  const handlers=['btnStats','btnLibrary','btnSettings','playBtn','nextBtn'].filter(id=>$(id)&&typeof $(id).onclick!=='function');tests.push(healthItem('关键按钮绑定',handlers.length?'bad':'ok',handlers.length?`未绑定：${handlers.join('、')}`:'按钮已绑定'));
+  try{const before=timedSeekPlan(0),after=timedSeekPlan(Math.max(1,settings.switchMinutes+1)*60);tests.push(healthItem('时间轴阶段计算',before.phase===1&&(settings.p2Type==='none'||after.phase===2)?'ok':'warn',`起点阶段 ${before.phase}，边界后阶段 ${after.phase}`))}catch(err){tests.push(healthItem('时间轴阶段计算','bad',err.message))}
+  tests.push(healthItem('核心函数',typeof refreshCurrentProgram==='function'&&typeof seekTimedSession==='function'&&typeof renderLibrary==='function'?'ok':'bad','播放、时间轴与资料库函数检查'));
+  return tests;
+}
+async function runFullDiagnostics({repair=false,open=true}={}){
+  const started=Date.now(),items=[...runSmokeTests(),...(await runConsistencyCheck({repair}))];const bad=items.filter(x=>x.status==='bad').length,warn=items.filter(x=>x.status==='warn').length;latestHealthReport={version:APP_VERSION,time:Date.now(),durationMs:Date.now()-started,bad,warn,items,logs:diagnosticLogs()};renderDiagnostics(latestHealthReport);$('healthDesc').textContent=bad?`发现 ${bad} 个错误、${warn} 个提醒。`:`自检通过${warn?`，有 ${warn} 个提醒`:''}。最近检查：${new Date().toLocaleTimeString('zh-CN')}`;if(bad)showHealthBanner(`自检发现 ${bad} 个错误，建议打开详情或自动修复。`);else if(!diagnosticLogs().length)clearErrorBanner();if(open)openSheet('diagnosticsSheet');return latestHealthReport;
+}
+function renderDiagnostics(report){
+  if(!report)return;const summary=$('diagSummary'),list=$('diagList');summary.textContent=`V${report.version} · ${new Date(report.time).toLocaleString('zh-CN')} · ${report.bad} 个错误 · ${report.warn} 个提醒 · ${report.durationMs}ms`;list.innerHTML='';report.items.forEach(item=>{const row=document.createElement('div');row.className='diag-row';const icon=document.createElement('span');icon.className=`diag-icon ${item.status==='ok'?'diag-ok':item.status==='warn'?'diag-warn':'diag-bad'}`;icon.textContent=item.status==='ok'?'✓':item.status==='warn'?'!':'×';const main=document.createElement('div');const name=document.createElement('div');name.textContent=item.name;name.style.fontWeight='700';const detail=document.createElement('div');detail.textContent=item.detail||'';detail.style.color='var(--dim)';detail.style.marginTop='2px';main.append(name,detail);row.append(icon,main);list.appendChild(row)});if(report.logs.length){const title=document.createElement('div');title.className='section-title';title.textContent='近期错误记录';list.appendChild(title);report.logs.slice(0,10).forEach(log=>{const row=document.createElement('div');row.className='diag-row';const icon=document.createElement('span');icon.className='diag-icon diag-bad';icon.textContent='×';const main=document.createElement('div');main.textContent=`${new Date(log.time).toLocaleString('zh-CN')} · ${log.source} · ${log.message}`;row.append(icon,main);list.appendChild(row)})}}
+function showHealthBanner(message){const b=$('errorBanner'),t=$('errorBannerText');if(b)b.classList.add('show');if(t)t.textContent=message}
+function diagnosticText(){const report=latestHealthReport||{version:APP_VERSION,time:Date.now(),items:[],logs:diagnosticLogs()};return JSON.stringify({appVersion:APP_VERSION,userAgent:navigator.userAgent,url:location.href,report},null,2)}
+async function copyDiagnostics(){const text=diagnosticText();try{await navigator.clipboard.writeText(text);toast('诊断信息已复制')}catch{const a=document.createElement('textarea');a.value=text;document.body.appendChild(a);a.select();document.execCommand('copy');a.remove();toast('诊断信息已复制')}}
+function resetUiState(){localStorage.removeItem(COLLAPSE_KEY);$('librarySearch').value='';document.querySelectorAll('.overlay.show').forEach(x=>x.classList.remove('show'));$('configPanel').classList.remove('collapsed');$('configToggle').textContent='收起';collapseState={artists:{},series:{}};renderLibrary();toast('界面状态已重置，音频和统计未受影响')}
+function safeRestart(){localStorage.setItem(SAFE_MODE_KEY,'1');location.reload()}
 
 /* ---------- 统计、历史、镜像与快照 ---------- */
 function getStats(){return readProtected(STATS_KEY,{})}
@@ -884,6 +1067,11 @@ async function importBackup(file){
 $('exportBtn').onclick=exportBackup;$('importBtn').onclick=()=>{$('backupInput').value='';$('backupInput').click()};
 $('backupInput').onchange=async e=>{try{if(e.target.files[0]){await importBackup(e.target.files[0]);toast('数据已安全合并恢复')}}catch(err){toast(`恢复失败：${err.message}`,3500)}};
 $('rollbackBtn').onclick=restoreSnapshot;$('snapshotNowBtn').onclick=()=>{createSnapshot('manual',true);toast('已创建本地快照')};
+$('trashBtn').onclick=async()=>{await renderTrash();openSheet('trashSheet')};
+$('purgeExpiredBtn').onclick=async()=>{const n=await purgeExpiredTrash(false);await renderTrash();toast(n?`已清理 ${n} 项过期内容`:'没有过期内容')};
+$('emptyTrashBtn').onclick=async()=>{if(confirm('永久清空回收站？其中的音频文件将无法恢复。')){const n=await purgeExpiredTrash(true);await renderTrash();toast(`已永久删除 ${n} 项`)}};
+$('selfCheckBtn').onclick=()=>runFullDiagnostics({open:true});$('runDiagBtn').onclick=()=>runFullDiagnostics({open:false});$('repairDataBtn').onclick=()=>runFullDiagnostics({repair:true,open:false});$('copyDiagBtn').onclick=copyDiagnostics;$('copyDiagSheetBtn').onclick=copyDiagnostics;$('resetUiBtn').onclick=resetUiState;$('safeModeBtn').onclick=safeRestart;
+$('autoRepairBtn').onclick=async()=>{await runFullDiagnostics({repair:true,open:false});toast('自动修复完成，请查看自检结果')};$('openDiagnosticsBtn').onclick=()=>{if(latestHealthReport)renderDiagnostics(latestHealthReport);openSheet('diagnosticsSheet')};
 
 /* ---------- 播放引擎：连续作品、双播放器、会话恢复 ---------- */
 const runtimes={
@@ -894,7 +1082,7 @@ let session={has:false,running:false,switching:false,finishing:false,phase:1,ela
 let ticker=null,boundaryTimer=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
 function activeRuntime(){return runtimes[session.phase]}
 function activePlayer(){return activeRuntime().player}
-function candidateTracks(phase){const type=settings[`p${phase}Type`];if(type==='none')return[];return tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`])}
+function candidateTracks(phase){const type=settings[`p${phase}Type`];if(type==='none')return[];return tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`]).filter(t=>!t.missingBlob)}
 function selectedSeries(phase){const id=settings[`p${phase}Series`];return id&&id!=='*'?getSeries(id):null}
 function chooseTrack(phase,excludeId=null,forNext=false){
   const list=candidateTracks(phase);if(!list.length)return null;
@@ -1109,17 +1297,35 @@ if('mediaSession'in navigator){const handlers={play:()=>{if(!session.running)tog
 function ensureAudioGraph(){if(audioCtx)return;audioCtx=new (window.AudioContext||window.webkitAudioContext)();Object.entries(runtimes).forEach(([phase,r])=>{const source=audioCtx.createMediaElementSource(r.player),hp=audioCtx.createBiquadFilter(),lp=audioCtx.createBiquadFilter(),comp=audioCtx.createDynamicsCompressor();hp.type='highpass';lp.type='lowpass';source.connect(hp);hp.connect(lp);lp.connect(comp);comp.connect(audioCtx.destination);audioNodes[phase]={hp,lp,comp}});applyAudioPreset()}
 function applyAudioPreset(){if(!audioCtx)return;const now=audioCtx.currentTime;Object.values(audioNodes).forEach(({hp,lp,comp})=>{hp.frequency.setTargetAtTime(settings.denoiseOn?105:20,now,.08);lp.frequency.setTargetAtTime(settings.denoiseOn?7800:20000,now,.08);comp.threshold.setTargetAtTime(settings.denoiseOn?-34:-50,now,.08);comp.ratio.setTargetAtTime(settings.denoiseOn?5:3,now,.08);comp.knee.setTargetAtTime(28,now,.08);comp.attack.setTargetAtTime(.01,now,.08);comp.release.setTargetAtTime(.25,now,.08)})}
 
+/* ---------- Service Worker 版本更新 ---------- */
+let swRegistration=null,reloadForUpdate=false;
+function showUpdateBanner(reg){swRegistration=reg;const b=$('updateBanner');if(b)b.classList.add('show');$('updateText').textContent=`新版本已下载。当前 V${APP_VERSION}，立即更新不会清除本地资料。`}
+async function registerServiceWorker(){
+  if(!('serviceWorker'in navigator))return;try{
+    const hadController=!!navigator.serviceWorker.controller,reg=await navigator.serviceWorker.register('./sw.js');swRegistration=reg;if(reg.waiting)showUpdateBanner(reg);
+    reg.addEventListener('updatefound',()=>{const worker=reg.installing;if(!worker)return;worker.addEventListener('statechange',()=>{if(worker.state==='installed'&&navigator.serviceWorker.controller)showUpdateBanner(reg)})});
+    navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadController||reloadForUpdate)return;reloadForUpdate=true;location.reload()});
+    setInterval(()=>reg.update().catch(()=>{}),60*60*1000);
+  }catch(err){recordDiagnostic('service-worker',err)}
+}
+async function checkForUpdates(){if(!swRegistration)await registerServiceWorker();try{await swRegistration?.update();if(swRegistration?.waiting)showUpdateBanner(swRegistration);else toast('已检查更新，当前已是可用的最新版本')}catch(err){recordDiagnostic('check-update',err);toast('检查更新失败')}
+}
+$('updateNowBtn').onclick=()=>{const worker=swRegistration?.waiting;if(worker){worker.postMessage({type:'SKIP_WAITING'});$('updateText').textContent='正在切换到新版本…'}else toast('更新尚未准备完成')};$('updateLaterBtn').onclick=()=>$('updateBanner').classList.remove('show');$('checkUpdateBtn').onclick=checkForUpdates;
+
 /* ---------- 入口 ---------- */
 $('btnStats').onclick=()=>{renderStats();openSheet('statsSheet')};
 $('btnLibrary').onclick=()=>{renderLibrary();openSheet('librarySheet')};
-$('btnSettings').onclick=()=>{updateSnapshotDesc();openSheet('settingsSheet')};
+$('btnSettings').onclick=()=>{updateSnapshotDesc();updateTrashCount();$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;openSheet('settingsSheet')};
+async function initStep(name,fn,{critical=false}={}){try{return await fn()}catch(err){recordDiagnostic(`init:${name}`,err);if(critical)throw err;return null}}
 async function init(){
+  const safeMode=localStorage.getItem(SAFE_MODE_KEY)==='1';if(safeMode){localStorage.removeItem(SAFE_MODE_KEY);localStorage.removeItem(COLLAPSE_KEY);collapseState={artists:{},series:{}};showHealthBanner('已使用安全模式启动：仅重置临时界面状态，音频和统计未被删除。')}
+  let migrated=false;
   try{
-    await openDB();const migrated=await ensureV12Migration();await refreshLibrary();await migrateSettingsV11();ensureDailySnapshot();updateSnapshotDesc();renderStats();updateModeUI();showResumeCandidate();
-    if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
-    $('miniStatus').textContent='V1.2.1 已启用：修复顶部按钮，并保留艺术家 → 作品 → 节目';
+    await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
+    $('miniStatus').textContent='V1.2.4 稳定版：自检、回收站、异常隔离与更新提示已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
-  }catch(err){console.error(err);toast(`初始化失败：${err.message}`,5000)}
+    setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
+  }catch(err){toast(`关键初始化失败：${err.message}`,5000);showHealthBanner(`关键初始化失败：${err.message}。顶部入口和诊断功能仍可使用。`)}finally{registerServiceWorker()}
 }
 init();
 
