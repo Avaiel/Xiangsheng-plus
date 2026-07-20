@@ -23,10 +23,20 @@ button,input,select{font:inherit}
 button{cursor:pointer}
 body{overflow:hidden}
 .app{
-  height:100dvh;display:flex;flex-direction:column;
-  padding:env(safe-area-inset-top,12px) 14px env(safe-area-inset-bottom,12px);
+  height:100vh;height:100dvh;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top,12px) 14px 0;
 }
-.scroll-main{min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;padding-bottom:10px}
+/*
+ * Android TWA 的手势导航区经常把 safe-area-inset-bottom 报为 0。
+ * 因此在实际滚动容器中始终预留底部空间，使最后一排播放按钮
+ * 可以完整滚动到系统手势条上方。
+ */
+.scroll-main{
+  min-height:0;flex:1;overflow-y:auto;overscroll-behavior:contain;
+  padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));
+  scroll-padding-bottom:calc(68px + env(safe-area-inset-bottom,0px));
+  -webkit-overflow-scrolling:touch;
+}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:4px 2px 10px}
 .brand{display:flex;flex-direction:column;gap:2px}
 .brand h1{font-size:21px;letter-spacing:3px;margin:0;font-weight:650}
@@ -103,7 +113,10 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .timeline-fill{width:0;background:linear-gradient(90deg,var(--ember-dark),var(--ember2))}
 .timeline-thumb{position:absolute;left:0;width:17px;height:17px;margin-left:-8px;border-radius:50%;background:var(--ink);border:2px solid var(--ember);box-shadow:0 3px 6px rgba(0,0,0,.5)}
 .time-row{display:flex;justify-content:space-between;color:var(--dim);font-size:11px;font-variant-numeric:tabular-nums}
-.controls{display:flex;justify-content:center;align-items:center;gap:25px;padding:4px 0 8px}
+.controls{
+  display:flex;justify-content:center;align-items:center;gap:25px;
+  padding:4px 0 12px;min-height:96px;flex-shrink:0
+}
 .ctrl{
   width:55px;height:55px;border-radius:50%;border:1px solid var(--line);
   background:var(--card);color:var(--ink);display:grid;place-items:center
@@ -116,7 +129,10 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 }
 .play svg{width:37px;height:37px;fill:currentColor}
 .play:disabled{filter:grayscale(.8);opacity:.45}
-.mini-status{text-align:center;color:var(--dim);font-size:11px;padding-bottom:5px}
+.mini-status{
+  text-align:center;color:var(--dim);font-size:11px;
+  padding-bottom:4px;min-height:20px;flex-shrink:0
+}
 
 .overlay{
   position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(5px);
@@ -246,6 +262,16 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .track.missing-blob{opacity:.62}.track.missing-blob .track-title::after{content:" · 文件缺失";color:#e18475;font-size:10px}
 
 input[type=file]{display:none}
+@media(max-width:380px){
+  .controls{gap:16px}
+  .ctrl{width:50px;height:50px}
+  .play{width:76px;height:76px}
+}
+@media(max-height:720px){
+  .controls{gap:18px;min-height:84px}
+  .ctrl{width:50px;height:50px}
+  .play{width:76px;height:76px}
+}
 @media(min-width:720px){
   .app{max-width:520px;margin:auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
   .sheet{max-width:560px;left:50%;right:auto;width:100%;transform:translateX(-50%)}
@@ -255,7 +281,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4 · 稳定性与数据保护</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4.1 · 底部安全区修复</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -424,7 +450,7 @@ input[type=file]{display:none}
       <div class="button-row"><button class="small-btn" id="resetUiBtn">重置界面</button><button class="small-btn" id="safeModeBtn">安全重启</button></div>
     </div>
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4 · Schema 12</div></div>
+      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4.1 · Schema 12</div></div>
       <button class="small-btn" id="checkUpdateBtn">检查更新</button>
     </div>
     <div class="setting-row">
@@ -461,7 +487,7 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.4';
+const APP_VERSION='1.2.4.1';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
