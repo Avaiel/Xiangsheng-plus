@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4.2 · 锁屏优化与防误触</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.5 · 会话稳定收口</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -423,8 +423,16 @@ input[type=file]{display:none}
       <button class="toggle" id="denoiseToggle" aria-label="老录音优化"></button>
     </div>
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">摇一摇延时</div><div class="setting-desc">快结束时闭着眼睛轻轻摇晃手机，自动延长 15 分钟。</div></div>
-      <button class="toggle" id="shakeToggle" aria-label="摇一摇延时"></button>
+      <div class="setting-main"><div class="setting-name">摇一摇延时</div><div class="setting-desc">播放中或正在淡出时摇晃手机，只延长本次播放，不修改下次默认定时。</div></div>
+      <div class="button-row" style="align-items:center;justify-content:flex-end">
+        <select class="select" id="shakeMinutes" aria-label="每次延长时长" style="width:92px">
+          <option value="5">延长 5 分</option>
+          <option value="10">延长 10 分</option>
+          <option value="15">延长 15 分</option>
+          <option value="30">延长 30 分</option>
+        </select>
+        <button class="toggle" id="shakeToggle" aria-label="摇一摇延时"></button>
+      </div>
     </div>
     <div class="setting-row">
       <div class="setting-main"><div class="setting-name">淡出时长</div><div class="setting-desc">到点结束时的音量下降时间。</div></div>
@@ -447,7 +455,7 @@ input[type=file]{display:none}
       <div class="button-row"><button class="small-btn" id="resetUiBtn">重置界面</button><button class="small-btn" id="safeModeBtn">安全重启</button></div>
     </div>
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4.2 · Schema 12</div></div>
+      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.5 · Schema 12</div></div>
       <button class="small-btn" id="checkUpdateBtn">检查更新</button>
     </div>
     <div class="setting-row">
@@ -456,6 +464,7 @@ input[type=file]{display:none}
     </div>
   </div>
 </div></div>
+
 
 <!-- 回收站 -->
 <div class="overlay" id="trashSheet"><div class="sheet">
@@ -483,7 +492,12 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.4.2';
+const BUILD_INFO=Object.freeze({
+  appVersion:'1.2.5',
+  schemaVersion:12,
+  cacheVersion:'20260721-01'
+});
+const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
@@ -506,7 +520,7 @@ const DEFAULT_SETTINGS={
   p2Type:'solo',p2Artist:'*',p2Series:'*',p2Track:'',
   manualMode:false,fadeEnabled:true,denoiseOn:false,fadeMs:2500,
   totalMinutes:20,playToEnd:false,switchMinutes:1,
-  shakeEnabled:false
+  shakeEnabled:false,shakeMinutes:15
 };
 
 const $=id=>document.getElementById(id);
@@ -799,13 +813,15 @@ function sanitizeSettings(raw){
   }
   s.manualMode=!!s.manualMode;s.fadeEnabled=s.fadeEnabled!==false;s.denoiseOn=!!s.denoiseOn;
   s.shakeEnabled=!!s.shakeEnabled;
+  s.shakeMinutes=[5,10,15,30].includes(Number(s.shakeMinutes))?Number(s.shakeMinutes):15;
   s.fadeMs=[1000,2500,5000,10000].includes(Number(s.fadeMs))?Number(s.fadeMs):2500;
   s.totalMinutes=clamp(Number(s.totalMinutes)||20,1,720);s.playToEnd=!!s.playToEnd;s.switchMinutes=clamp(Number(s.switchMinutes)||1,1,Math.max(1,s.totalMinutes-1));s.schemaVersion=12;return s;
 }
 const oldSettings=readJson(OLD_SETTINGS_KEY,{});
 let settings=sanitizeSettings({...oldSettings,...readJson(SETTINGS_KEY,{})});
 writeJson(SETTINGS_KEY,settings);
-function saveSettings(){writeJson(SETTINGS_KEY,settings);updateModeUI()}
+function persistSettings(){writeJson(SETTINGS_KEY,settings)}
+function saveSettings({render=true}={}){persistSettings();if(render)updateModeUI()}
 async function migrateSettingsV11(){
   if(readJson(SETTINGS_KEY,null))return;
   for(const phase of [1,2]){
@@ -850,9 +866,12 @@ function updateModeUI(){
   $('switchSlider').max=Math.max(1,(settings.totalMinutes||20)-1);settings.switchMinutes=clamp(Number(settings.switchMinutes)||1,1,Number($('switchSlider').max));
   $('switchSlider').value=settings.switchMinutes;$('switchText').textContent=`${settings.switchMinutes} 分钟`;
   $('manualToggle').classList.toggle('on',settings.manualMode);$('fadeToggle').classList.toggle('on',settings.fadeEnabled);$('denoiseToggle').classList.toggle('on',settings.denoiseOn);$('fadeDuration').value=String(settings.fadeMs);
-  $('shakeToggle').classList.toggle('on',settings.shakeEnabled);
+  $('shakeToggle').classList.toggle('on',settings.shakeEnabled);$('shakeMinutes').value=String(settings.shakeMinutes);
   document.querySelectorAll('#timerGrid .pill').forEach(b=>{const m=b.dataset.min;b.classList.toggle('active',settings.playToEnd?m==='-1':Number(m)===Number(settings.totalMinutes))});
-  if(settings.playToEnd){$('elapsedText').textContent='当前 00:00';$('totalText').textContent='总长 --:--'}else{$('elapsedText').textContent='已播 00:00';$('totalText').textContent=`剩余 ${fmt(settings.totalMinutes*60)}`}updateStartButton();
+  if(typeof session!=='undefined'&&session.has)restoreTimelineView();
+  else if(settings.playToEnd){$('elapsedText').textContent='当前 00:00';$('totalText').textContent='总长 --:--'}
+  else{$('elapsedText').textContent='已播 00:00';$('totalText').textContent=`剩余 ${fmt(settings.totalMinutes*60)}`}
+  updateStartButton();
 }
 document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
   const phase=Number(btn.dataset.phase),type=btn.dataset.type;settings[`p${phase}Type`]=type;settings[`p${phase}Artist`]='*';settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings();
@@ -877,6 +896,7 @@ $('manualToggle').onclick=()=>{settings.manualMode=!settings.manualMode;saveSett
 $('fadeToggle').onclick=()=>{settings.fadeEnabled=!settings.fadeEnabled;saveSettings()};
 $('denoiseToggle').onclick=()=>{settings.denoiseOn=!settings.denoiseOn;saveSettings();applyAudioPreset()};
 $('fadeDuration').onchange=e=>{settings.fadeMs=Number(e.target.value);saveSettings()};
+$('shakeMinutes').onchange=e=>{settings.shakeMinutes=Number(e.target.value);saveSettings()};
 
 /* ---------- 资料库：艺术家和作品双层折叠 ---------- */
 let activeLibType='duo',pendingImport={type:null,artistId:null,seriesId:null};
@@ -1025,6 +1045,11 @@ function runSmokeTests(){
   const handlers=['btnStats','btnLibrary','btnSettings','playBtn','nextBtn'].filter(id=>$(id)&&typeof $(id).onclick!=='function');tests.push(healthItem('关键按钮绑定',handlers.length?'bad':'ok',handlers.length?`未绑定：${handlers.join('、')}`:'按钮已绑定'));
   try{const before=timedSeekPlan(0),after=timedSeekPlan(Math.max(1,settings.switchMinutes+1)*60);tests.push(healthItem('时间轴阶段计算',before.phase===1&&(settings.p2Type==='none'||after.phase===2)?'ok':'warn',`起点阶段 ${before.phase}，边界后阶段 ${after.phase}`))}catch(err){tests.push(healthItem('时间轴阶段计算','bad',err.message))}
   tests.push(healthItem('核心函数',typeof refreshCurrentProgram==='function'&&typeof seekTimedSession==='function'&&typeof renderLibrary==='function'?'ok':'bad','播放、时间轴与资料库函数检查'));
+  const totalTest=calculateSessionTotalSeconds(15*60,15*60);
+  tests.push(healthItem('会话级延时计算',totalTest===30*60?'ok':'bad',`15 分钟基础 + 15 分钟延时 = ${Math.round(totalTest/60)} 分钟`));
+  const seekBefore=calculateTimedSeekPlan(3*60,20*60,5*60,true),seekAfter=calculateTimedSeekPlan(10*60,20*60,5*60,true);
+  tests.push(healthItem('跨阶段时间轴模型',seekBefore.phase===1&&seekAfter.phase===2&&seekAfter.mediaTime===5*60?'ok':'bad',`3 分钟→阶段${seekBefore.phase}；10 分钟→阶段${seekAfter.phase}媒体 ${fmt(seekAfter.mediaTime)}`));
+  tests.push(healthItem('结束流程可取消',typeof finishGeneration==='number'&&typeof cancelFade==='function'?'ok':'bad','摇一摇可使旧结束任务失效并取消淡出'));
   return tests;
 }
 async function runFullDiagnostics({repair=false,open=true}={}){
@@ -1103,7 +1128,37 @@ const runtimes={
   1:{player:$('phase1Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,lastProgressSavedAt:0,loading:false},
   2:{player:$('phase2Audio'),url:null,trackId:null,meta:null,lastMediaTime:0,lastProgressSavedAt:0,loading:false}
 };
-let session={has:false,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:null,2:null},lastSavedAt:0};
+const SESSION_STATES=Object.freeze({
+  IDLE:'IDLE',LOADING:'LOADING',PLAYING_PHASE_1:'PLAYING_PHASE_1',
+  SWITCHING:'SWITCHING',PLAYING_PHASE_2:'PLAYING_PHASE_2',
+  PAUSED:'PAUSED',FINISHING:'FINISHING',FINISHED:'FINISHED',ERROR:'ERROR'
+});
+function createSession(overrides={}){
+  return {
+    id:null,state:SESSION_STATES.IDLE,has:false,running:false,switching:false,finishing:false,
+    phase:1,elapsed:0,startMs:0,baseDurationSeconds:0,extensionSeconds:0,deadlineAt:0,
+    phaseTracks:{1:null,2:null},lastSavedAt:0,...overrides
+  };
+}
+function setSessionState(state){session.state=state}
+function calculateSessionTotalSeconds(baseSeconds,extensionSeconds){
+  return Math.max(1,Number(baseSeconds)||1)+Math.max(0,Number(extensionSeconds)||0);
+}
+function sessionTotalSeconds(){
+  if(settings.playToEnd)return Infinity;
+  const base=session.has&&session.baseDurationSeconds>0?session.baseDurationSeconds:(Number(settings.totalMinutes)||20)*60;
+  return calculateSessionTotalSeconds(base,session.extensionSeconds);
+}
+function sessionRemainingSeconds(){
+  if(settings.playToEnd)return Infinity;
+  return Math.max(0,sessionTotalSeconds()-sessionElapsedNow());
+}
+function recalculateSessionDeadline(){
+  session.deadlineAt=session.running&&!settings.playToEnd?Date.now()+sessionRemainingSeconds()*1000:0;
+  return session.deadlineAt;
+}
+let session=createSession();
+let finishGeneration=0;
 let ticker=null,boundaryTimer=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
 function activeRuntime(){return runtimes[session.phase]}
 function activePlayer(){return activeRuntime().player}
@@ -1147,38 +1202,73 @@ async function persistTrackProgress(phase,force=false){
   try{await updateTrackMeta(meta)}catch(err){console.warn('保存节目进度失败',err)}
 }
 async function markTrackCompleted(track){if(!track)return;track.completed=true;track.lastPosition=0;track.lastPlayedAt=Date.now();await updateTrackMeta(track)}
-
-/* 修复1：锁屏不切歌（在后台直接跳过淡出动画） */
+const fadeTokens=new WeakMap();
+function cancelFade(player){fadeTokens.set(player,(fadeTokens.get(player)||0)+1)}
 function fadeVolume(player,from,to,ms){
+  const token=(fadeTokens.get(player)||0)+1;fadeTokens.set(player,token);
   return new Promise(resolve=>{
-    if(!settings.fadeEnabled || ms<50 || document.hidden){
-      player.volume=to;resolve();return;
-    }
+    if(!settings.fadeEnabled||ms<50||document.hidden){player.volume=to;resolve(true);return}
     const start=performance.now(),step=now=>{
-      const t=clamp((now-start)/ms,0,1);
-      player.volume=from+(to-from)*t;
-      if(t<1)requestAnimationFrame(step);else resolve();
+      if(fadeTokens.get(player)!==token){resolve(false);return}
+      const t=clamp((now-start)/ms,0,1);player.volume=from+(to-from)*t;
+      if(t<1)requestAnimationFrame(step);else resolve(true)
     };
-    requestAnimationFrame(step);
+    requestAnimationFrame(step)
+  })
+}
+async function startNewSession(){
+  const t1=chooseTrack(1);if(!t1){toast('开场没有可用音频，请先在资料库添加');openSheet('librarySheet');return}
+  const t2=settings.p2Type==='none'?null:chooseTrack(2);if(settings.p2Type!=='none'&&!t2){toast('收尾没有可用音频，请调整艺术家或作品');return}
+  finishGeneration++;stopTicker();releasePhase(2);
+  session=createSession({
+    id:makeId(),state:SESSION_STATES.LOADING,has:true,phase:1,
+    baseDurationSeconds:settings.playToEnd?0:(Number(settings.totalMinutes)||20)*60,
+    extensionSeconds:0,phaseTracks:{1:t1.id,2:t2?.id||null}
   });
+  await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
 }
 
-async function startNewSession(){
-  const t1=chooseTrack(1);if(!t1){toast('开场没有可用音频，请先在资料库添加');openSheet('librarySheet');return}const t2=settings.p2Type==='none'?null:chooseTrack(2);if(settings.p2Type!=='none'&&!t2){toast('收尾没有可用音频，请调整艺术家或作品');return}
-  stopTicker();releasePhase(2);session={has:true,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:t1.id,2:t2?.id||null},lastSavedAt:0};await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
-}
 async function playSession(){
   if(!session.has)return startNewSession();
-  try{ensureAudioGraph();if(audioCtx?.state==='suspended')await audioCtx.resume();const p=activePlayer();await p.play();session.running=true;session.startMs=Date.now()-session.elapsed*1000;activeRuntime().lastMediaTime=p.currentTime||0;$('fan').classList.add('playing');$('configPanel').classList.add('collapsed');$('configToggle').textContent='展开';setPlayIcon(true);updateNowPlaying(activeRuntime().meta);startTicker();updateMediaPlaybackState()}
-  catch(err){toast(`无法开始播放：${err.message}`,3200);session.running=false;setPlayIcon(false)}
+  try{
+    if(session.finishing){finishGeneration++;session.finishing=false}
+    ensureAudioGraph();if(audioCtx?.state==='suspended')await audioCtx.resume();
+    const p=activePlayer();await p.play();session.running=true;session.switching=false;
+    session.startMs=Date.now()-session.elapsed*1000;recalculateSessionDeadline();
+    setSessionState(session.phase===1?SESSION_STATES.PLAYING_PHASE_1:SESSION_STATES.PLAYING_PHASE_2);
+    activeRuntime().lastMediaTime=p.currentTime||0;$('fan').classList.add('playing');
+    $('configPanel').classList.add('collapsed');$('configToggle').textContent='展开';
+    setPlayIcon(true);updateNowPlaying(activeRuntime().meta);startTicker();updateMediaPlaybackState()
+  }catch(err){
+    setSessionState(SESSION_STATES.ERROR);toast(`无法开始播放：${err.message}`,3200);
+    session.running=false;setPlayIcon(false)
+  }
 }
-function pauseSession(){if(!session.running)return;captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);session.running=false;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;Object.values(runtimes).forEach(r=>r.player.pause());stopTicker();$('fan').classList.remove('playing');$('nowPhase').textContent='已暂停';setPlayIcon(false);saveSessionState();updateMediaPlaybackState()}
+
+function pauseSession(){
+  if(!session.running)return;captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);
+  session.running=false;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;
+  session.deadlineAt=0;setSessionState(SESSION_STATES.PAUSED);
+  Object.values(runtimes).forEach(r=>r.player.pause());stopTicker();$('fan').classList.remove('playing');
+  $('nowPhase').textContent='已暂停';setPlayIcon(false);saveSessionState();updateMediaPlaybackState()
+}
 async function togglePlayback(){if(session.running)pauseSession();else if(session.has)await playSession();else await startNewSession()}
 async function switchPhase(){
-  if(session.switching||session.finishing||settings.p2Type==='none')return;session.switching=true;const old=runtimes[1];captureMediaProgress(1);flushPlayTime();await persistTrackProgress(1,true);$('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);old.player.pause();session.phase=2;
-  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled&&!document.hidden?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState();scheduleBoundaryTimer()}
-  catch(err){session.switching=false;await handleAudioError(2,err)}
+  if(session.switching||session.finishing||settings.p2Type==='none')return;
+  session.switching=true;setSessionState(SESSION_STATES.SWITCHING);
+  const old=runtimes[1];captureMediaProgress(1);flushPlayTime();await persistTrackProgress(1,true);
+  $('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);
+  if(!session.switching||session.finishing)return;
+  old.player.pause();session.phase=2;
+  try{
+    if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);
+    const r=runtimes[2];r.player.volume=settings.fadeEnabled&&!document.hidden?0:1;await r.player.play();addHistory(r.meta);
+    await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;
+    session.switching=false;consecutiveErrors=0;setSessionState(SESSION_STATES.PLAYING_PHASE_2);
+    updateNowPlaying(r.meta,2);saveSessionState();scheduleBoundaryTimer()
+  }catch(err){session.switching=false;setSessionState(SESSION_STATES.ERROR);await handleAudioError(2,err)}
 }
+
 async function playNext(phase=session.phase,{markCompleted=false}={}){
   const current=runtimes[phase].meta;if(current){captureMediaProgress(phase);flushPlayTime();if(markCompleted)await markTrackCompleted(current);else await persistTrackProgress(phase,true)}
   const next=chooseTrack(phase,current?.id||null,true);
@@ -1234,34 +1324,52 @@ async function refreshCurrentProgram(){
 async function handleEnded(phase){captureMediaProgress(phase);flushPlayTime();if(phase!==session.phase||session.finishing)return;await playNext(phase,{markCompleted:true})}
 async function handleAudioError(phase,err){if(!session.has||session.finishing)return;consecutiveErrors++;toast(`音频无法播放，正在跳过${err?.message?`：${err.message}`:''}`,3000);if(consecutiveErrors>=3){await finishSession('连续 3 集音频无法播放');return}await playNext(phase)}
 async function finishSession(reason='播放结束'){
-  if(session.finishing)return;session.finishing=true;session.running=false;stopTicker();flushPlayTime();await Promise.allSettled([persistTrackProgress(1,true),persistTrackProgress(2,true)]);const fades=Object.values(runtimes).map(r=>fadeVolume(r.player,r.player.volume||0,0,settings.fadeMs));await Promise.allSettled(fades);Object.values(runtimes).forEach(r=>r.player.pause());session.has=false;session.finishing=false;session.switching=false;localStorage.removeItem(SESSION_KEY);$('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';$('nowGroup').textContent='';$('nowPhase').textContent=reason;setPlayIcon(false);if(!settings.playToEnd)paintTimeline(settings.totalMinutes*60,settings.totalMinutes*60);updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary();
+  if(session.finishing)return;
+  const generation=++finishGeneration,totalBeforeFinish=settings.playToEnd?0:sessionTotalSeconds();
+  session.finishing=true;session.running=false;setSessionState(SESSION_STATES.FINISHING);
+  stopTicker();flushPlayTime();
+  await Promise.allSettled([persistTrackProgress(1,true),persistTrackProgress(2,true)]);
+  const fades=Object.values(runtimes).map(r=>fadeVolume(r.player,r.player.volume||0,0,settings.fadeMs));
+  await Promise.allSettled(fades);
+  if(generation!==finishGeneration||!session.finishing)return;
+  Object.values(runtimes).forEach(r=>r.player.pause());
+  session.has=false;session.finishing=false;session.switching=false;session.deadlineAt=0;
+  setSessionState(SESSION_STATES.FINISHED);localStorage.removeItem(SESSION_KEY);
+  $('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';
+  $('nowGroup').textContent='';$('nowPhase').textContent=reason;setPlayIcon(false);
+  if(!settings.playToEnd)paintTimeline(totalBeforeFinish,totalBeforeFinish);
+  updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary()
 }
+
 function releasePhase(phase){const r=runtimes[phase];r.player.pause();r.player.removeAttribute('src');r.player.load();if(r.url)URL.revokeObjectURL(r.url);r.url=null;r.trackId=null;r.meta=null;r.lastMediaTime=0}
 function sessionElapsedNow(){return session.running&&!settings.playToEnd?(Date.now()-session.startMs)/1000:session.elapsed}
 function scheduleBoundaryTimer(){
   if(boundaryTimer){clearTimeout(boundaryTimer);boundaryTimer=null}
   if(!session.running||settings.playToEnd||session.finishing)return;
-  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
+  recalculateSessionDeadline();
+  const total=sessionTotalSeconds(),switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
   const boundary=session.phase===1&&settings.p2Type!=='none'?Math.min(total,switchAt):total;
   const delay=Math.max(0,boundary-sessionElapsedNow())*1000;
-  boundaryTimer=setTimeout(()=>{boundaryTimer=null;checkSessionBoundaries()},Math.min(delay+80,2147480000));
+  boundaryTimer=setTimeout(()=>{boundaryTimer=null;checkSessionBoundaries()},Math.min(delay+80,2147480000))
 }
 function checkSessionBoundaries(){
   if(!session.running||settings.playToEnd||session.finishing)return false;
-  session.elapsed=sessionElapsedNow();
-  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
+  session.elapsed=sessionElapsedNow();const total=sessionTotalSeconds(),switchAt=Math.max(0,Number(settings.switchMinutes)||0)*60;
   if(session.elapsed>=total){finishSession();return true}
   if(settings.p2Type!=='none'&&session.phase===1&&!session.switching&&session.elapsed>=switchAt){switchPhase();return true}
-  return false;
+  return false
 }
 function startTicker(){stopTicker();ticker=setInterval(tick,500);scheduleBoundaryTimer();tick()}
 function stopTicker(){if(ticker){clearInterval(ticker);ticker=null}if(boundaryTimer){clearTimeout(boundaryTimer);boundaryTimer=null}}
 function tick(){
   if(!session.running)return;if(!settings.playToEnd)session.elapsed=sessionElapsedNow();captureMediaProgress(session.phase);
   if(checkSessionBoundaries())return;
-  if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}else paintTimeline(session.elapsed,settings.totalMinutes*60);
-  if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}updateMediaPosition();
+  if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}
+  else paintTimeline(session.elapsed,sessionTotalSeconds());
+  if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}
+  updateMediaPosition()
 }
+
 function paintTimeline(cur,dur){
   cur=clamp(Number(cur)||0,0,Number(dur)||0);const pct=clamp((cur/(dur||1))*100,0,100);$('timelineFill').style.width=`${pct}%`;$('timelineThumb').style.left=`${pct}%`;
   if(settings.playToEnd){$('elapsedText').textContent=`当前 ${fmt(cur)}`;$('totalText').textContent=`总长 ${Number.isFinite(dur)&&dur>1?fmt(dur):'--:--'}`}
@@ -1271,11 +1379,18 @@ function setPlayIcon(playing){$('playSvg').innerHTML=playing?'<path d="M6 5h4v14
 function updateStartButton(){const ok1=candidateTracks(1).length>0&&(!settings.manualMode||!!settings.p1Track),ok2=settings.p2Type==='none'||(candidateTracks(2).length>0&&(!settings.manualMode||!!settings.p2Track));$('playBtn').disabled=!session.has&&!(ok1&&ok2)}
 $('playBtn').onclick=togglePlayback;$('seekBack').onclick=()=>seekActive(-15);$('seekForward').onclick=()=>seekActive(15);$('nextBtn').onclick=refreshCurrentProgram;
 function seekActive(delta){if(!session.has)return;const p=activePlayer();p.currentTime=clamp((p.currentTime||0)+delta,0,Number.isFinite(p.duration)?p.duration:Infinity);activeRuntime().lastMediaTime=p.currentTime||0;persistTrackProgress(session.phase,true);saveSessionState();updateMediaPosition()}
-function timedSeekPlan(targetElapsed){
-  const total=Math.max(1,Number(settings.totalMinutes)||20)*60,elapsed=clamp(Number(targetElapsed)||0,0,total),switchAt=clamp((Number(settings.switchMinutes)||0)*60,0,total);
-  const hasPhase2=settings.p2Type!=='none'&&!!session.phaseTracks[2],phase=hasPhase2&&elapsed>=switchAt?2:1;
-  return {total,elapsed,phase,mediaTime:Math.max(0,phase===2?elapsed-switchAt:elapsed)};
+function calculateTimedSeekPlan(targetElapsed,total,switchAt,hasPhase2){
+  total=Math.max(1,Number(total)||1);const elapsed=clamp(Number(targetElapsed)||0,0,total);
+  switchAt=clamp(Number(switchAt)||0,0,total);const phase=hasPhase2&&elapsed>=switchAt?2:1;
+  return {total,elapsed,phase,mediaTime:Math.max(0,phase===2?elapsed-switchAt:elapsed)}
 }
+function timedSeekPlan(targetElapsed){
+  return calculateTimedSeekPlan(
+    targetElapsed,sessionTotalSeconds(),(Number(settings.switchMinutes)||0)*60,
+    settings.p2Type!=='none'&&!!session.phaseTracks[2]
+  )
+}
+
 async function seekTimedSession(targetElapsed){
   if(!session.has||settings.playToEnd)return;
   if(session.switching||session.finishing){toast('正在切换节目，请稍候');restoreTimelineView();return}
@@ -1301,12 +1416,12 @@ async function seekTimedSession(targetElapsed){
 function timelineRatio(e){const r=$('timelineTrack').getBoundingClientRect();return clamp((e.clientX-r.left)/r.width,0,1)}
 function previewTimeline(ratio){
   if(settings.playToEnd){const p=activePlayer(),dur=Number.isFinite(p.duration)?p.duration:1;paintTimeline(dur*ratio,dur)}
-  else paintTimeline(settings.totalMinutes*60*ratio,settings.totalMinutes*60);
+  else{const total=sessionTotalSeconds();paintTimeline(total*ratio,total);}
 }
 function restoreTimelineView(){
-  if(!session.has){paintTimeline(0,settings.playToEnd?1:settings.totalMinutes*60);return}
+  if(!session.has){paintTimeline(0,settings.playToEnd?1:(Number(settings.totalMinutes)||20)*60);return}
   if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,p.duration||1)}
-  else paintTimeline(session.elapsed,settings.totalMinutes*60);
+  else paintTimeline(session.elapsed,sessionTotalSeconds());
 }
 let dragging=false;$('timelineTrack').onpointerdown=e=>{if(!session.has)return;dragging=true;$('timelineTrack').setPointerCapture(e.pointerId);previewTimeline(timelineRatio(e))};
 $('timelineTrack').onpointermove=e=>{if(dragging)previewTimeline(timelineRatio(e))};
@@ -1314,17 +1429,51 @@ $('timelineTrack').onpointercancel=()=>{dragging=false;restoreTimelineView()};
 $('timelineTrack').onpointerup=async e=>{
   if(!dragging)return;dragging=false;const ratio=timelineRatio(e);
   if(settings.playToEnd){const p=activePlayer();if(Number.isFinite(p.duration)){p.currentTime=p.duration*ratio;activeRuntime().lastMediaTime=p.currentTime||0;await persistTrackProgress(session.phase,true);saveSessionState();updateMediaPosition();paintTimeline(p.currentTime,p.duration)}}
-  else await seekTimedSession(settings.totalMinutes*60*ratio);
+  else await seekTimedSession(sessionTotalSeconds()*ratio);
 };
 Object.entries(runtimes).forEach(([phase,r])=>{const n=Number(phase);r.player.addEventListener('timeupdate',()=>{captureMediaProgress(n);if(n===session.phase)checkSessionBoundaries()});r.player.addEventListener('seeking',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('seeked',()=>r.lastMediaTime=r.player.currentTime||0);r.player.addEventListener('ended',()=>handleEnded(n));r.player.addEventListener('error',()=>{if(r.player.src&&!r.loading)handleAudioError(n,new Error('文件损坏或格式不受支持'))})});
 
 /* ---------- 会话恢复 ---------- */
 function saveSessionState(){
   if(!session.has){localStorage.removeItem(SESSION_KEY);return}
-  const data={schemaVersion:12,savedAt:Date.now(),phase:session.phase,elapsed:session.elapsed,phaseTracks:{...session.phaseTracks},positions:{1:runtimes[1].player.currentTime||0,2:runtimes[2].player.currentTime||0},settings:{p1Type:settings.p1Type,p1Artist:settings.p1Artist,p1Series:settings.p1Series,p1Track:settings.p1Track,p2Type:settings.p2Type,p2Artist:settings.p2Artist,p2Series:settings.p2Series,p2Track:settings.p2Track,totalMinutes:settings.totalMinutes,playToEnd:settings.playToEnd,switchMinutes:settings.switchMinutes,manualMode:settings.manualMode},title:activeRuntime().meta?.title||'',series:activeRuntime().meta?seriesName(activeRuntime().meta.seriesId):''};writeJson(SESSION_KEY,data);
+  const data={
+    schemaVersion:12,appVersion:APP_VERSION,savedAt:Date.now(),state:session.state,
+    phase:session.phase,elapsed:session.elapsed,baseDurationSeconds:session.baseDurationSeconds,
+    extensionSeconds:session.extensionSeconds,deadlineAt:session.deadlineAt,
+    phaseTracks:{...session.phaseTracks},
+    positions:{1:runtimes[1].player.currentTime||0,2:runtimes[2].player.currentTime||0},
+    settings:{
+      p1Type:settings.p1Type,p1Artist:settings.p1Artist,p1Series:settings.p1Series,p1Track:settings.p1Track,
+      p2Type:settings.p2Type,p2Artist:settings.p2Artist,p2Series:settings.p2Series,p2Track:settings.p2Track,
+      totalMinutes:settings.totalMinutes,playToEnd:settings.playToEnd,switchMinutes:settings.switchMinutes,
+      manualMode:settings.manualMode
+    },
+    title:activeRuntime().meta?.title||'',series:activeRuntime().meta?seriesName(activeRuntime().meta.seriesId):''
+  };
+  writeJson(SESSION_KEY,data)
 }
+
 function showResumeCandidate(){const saved=readJson(SESSION_KEY,null);if(!saved||Date.now()-saved.savedAt>14*86400000)return;const activeId=saved.phaseTracks?.[saved.phase];if(!library.tracks.some(t=>t.id===activeId)){localStorage.removeItem(SESSION_KEY);return}$('resumeTitle').textContent=saved.series?`继续《${saved.series}》`:(saved.title||'继续上次播放');$('resumeSub').textContent=`${saved.title||''} · ${fmt(saved.positions?.[saved.phase]||saved.elapsed||0)} · ${new Date(saved.savedAt).toLocaleString('zh-CN')}`;$('resumeCard').classList.add('show');$('resumeYes').onclick=()=>restoreSession(saved);$('resumeNo').onclick=()=>{$('resumeCard').classList.remove('show');localStorage.removeItem(SESSION_KEY);toast('已放弃上次播放进度')}}
-async function restoreSession(saved){try{settings={...settings,...saved.settings};saveSettings();session={has:true,running:false,switching:false,finishing:false,phase:Number(saved.phase)||1,elapsed:Number(saved.elapsed)||0,startMs:0,phaseTracks:{1:saved.phaseTracks?.[1]||saved.phaseTracks?.['1'],2:saved.phaseTracks?.[2]||saved.phaseTracks?.['2']||null},lastSavedAt:0};const id=session.phaseTracks[session.phase],pos=saved.positions?.[session.phase]||saved.positions?.[String(session.phase)]||0;await loadTrack(session.phase,id,pos);$('resumeCard').classList.remove('show');paintTimeline(session.elapsed,settings.playToEnd?(activePlayer().duration||1):settings.totalMinutes*60);await playSession();toast('已继续上次播放')}catch(err){localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast(`无法恢复：${err.message}`)}}
+async function restoreSession(saved){
+  try{
+    settings={...settings,...saved.settings};persistSettings();
+    const base=Number(saved.baseDurationSeconds)||((Number(saved.settings?.totalMinutes)||Number(settings.totalMinutes)||20)*60);
+    session=createSession({
+      id:makeId(),state:SESSION_STATES.PAUSED,has:true,phase:Number(saved.phase)||1,
+      elapsed:Number(saved.elapsed)||0,baseDurationSeconds:base,
+      extensionSeconds:Math.max(0,Number(saved.extensionSeconds)||0),deadlineAt:0,
+      phaseTracks:{1:saved.phaseTracks?.[1]||saved.phaseTracks?.['1'],2:saved.phaseTracks?.[2]||saved.phaseTracks?.['2']||null}
+    });
+    updateModeUI();
+    const id=session.phaseTracks[session.phase],pos=saved.positions?.[session.phase]||saved.positions?.[String(session.phase)]||0;
+    await loadTrack(session.phase,id,pos);$('resumeCard').classList.remove('show');
+    paintTimeline(session.elapsed,settings.playToEnd?(activePlayer().duration||1):sessionTotalSeconds());
+    await playSession();toast(session.extensionSeconds?`已继续上次播放，本次曾延长 ${Math.round(session.extensionSeconds/60)} 分钟`:'已继续上次播放')
+  }catch(err){
+    localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast(`无法恢复：${err.message}`)
+  }
+}
+
 $('clearSessionBtn').onclick=()=>{localStorage.removeItem(SESSION_KEY);$('resumeCard').classList.remove('show');toast('上次播放进度已清除')};
 window.addEventListener('pagehide',()=>{captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);saveSessionState()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);saveSessionState()}else if(session.running)tick()});
@@ -1352,76 +1501,54 @@ async function checkForUpdates(){if(!swRegistration)await registerServiceWorker(
 }
 $('updateNowBtn').onclick=()=>{const worker=swRegistration?.waiting;if(worker){worker.postMessage({type:'SKIP_WAITING'});$('updateText').textContent='正在切换到新版本…'}else toast('更新尚未准备完成')};$('updateLaterBtn').onclick=()=>$('updateBanner').classList.remove('show');$('checkUpdateBtn').onclick=checkForUpdates;
 
-/* ---------- 修复2：摇一摇灵敏度引擎优化 ---------- */
-let lastShakeTime = 0;
-let lastX = null, lastY = null, lastZ = null;
-const SHAKE_THRESHOLD = 25; // 灵敏度阈值：由 15 调高到了 25，显著降低放下手机时的误触率
+/* ---------- 摇一摇会话延时引擎 ---------- */
+let lastShakeTime=0,lastX=null,lastY=null,lastZ=null;
+const SHAKE_THRESHOLD=25;
+const SHAKE_COOLDOWN_MS=10000;
 
-function handleDeviceMotion(e) {
-  if (!settings.shakeEnabled || !session.running || settings.playToEnd) return;
-  const acc = e.accelerationIncludingGravity;
-  if (!acc) return;
-  
-  if (lastX === null) {
-    lastX = acc.x; lastY = acc.y; lastZ = acc.z;
-    return;
-  }
-  
-  const deltaX = Math.abs(acc.x - lastX);
-  const deltaY = Math.abs(acc.y - lastY);
-  const deltaZ = Math.abs(acc.z - lastZ);
-  
-  if (deltaX + deltaY + deltaZ > SHAKE_THRESHOLD) {
-    const now = Date.now();
-    if (now - lastShakeTime > 3000) { 
-      lastShakeTime = now;
-      triggerShakeExtension();
-    }
-  }
-  lastX = acc.x; lastY = acc.y; lastZ = acc.z;
+function setShakeListener(enabled){
+  window.removeEventListener('devicemotion',handleDeviceMotion);
+  if(enabled)window.addEventListener('devicemotion',handleDeviceMotion,{passive:true});
+  if(!enabled){lastX=null;lastY=null;lastZ=null}
 }
-
-function triggerShakeExtension() {
-  settings.totalMinutes += 15; 
-  saveSettings();
-  
-  const p = activePlayer();
-  if (p && p.volume < 1) fadeVolume(p, p.volume, 1, 1000); 
-  
-  scheduleBoundaryTimer(); 
-  if (navigator.vibrate) navigator.vibrate(50);
-  toast('👋 摇晃成功！定时已延长 15 分钟', 3000);
+function handleDeviceMotion(e){
+  if(!settings.shakeEnabled||!session.has||settings.playToEnd||(!session.running&&!session.finishing))return;
+  const acc=e.accelerationIncludingGravity;if(!acc)return;
+  if(lastX===null){lastX=acc.x;lastY=acc.y;lastZ=acc.z;return}
+  const strength=Math.abs(acc.x-lastX)+Math.abs(acc.y-lastY)+Math.abs(acc.z-lastZ);
+  lastX=acc.x;lastY=acc.y;lastZ=acc.z;
+  if(strength<=SHAKE_THRESHOLD)return;
+  const now=Date.now();if(now-lastShakeTime<SHAKE_COOLDOWN_MS)return;
+  lastShakeTime=now;extendCurrentSession(settings.shakeMinutes,'shake').catch(err=>recordDiagnostic('shake-extension',err))
 }
-
-$('shakeToggle').onclick = async () => {
-  if (!settings.shakeEnabled && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-    try {
-      const permission = await DeviceMotionEvent.requestPermission();
-      if (permission !== 'granted') {
-        toast('需要动作传感器权限才能识别摇一摇哦');
-        return;
-      }
-    } catch (err) {
-      toast('权限请求失败，请确保网站开启了 HTTPS');
-      return;
-    }
+async function extendCurrentSession(minutes,source='manual'){
+  minutes=Number(minutes);if(!session.has||settings.playToEnd||!Number.isFinite(minutes)||minutes<=0)return false;
+  const seconds=minutes*60,wasFinishing=session.finishing;
+  finishGeneration++;session.finishing=false;session.switching=false;
+  session.extensionSeconds=Math.max(0,Number(session.extensionSeconds)||0)+seconds;
+  session.running=true;session.startMs=Date.now()-session.elapsed*1000;
+  setSessionState(session.phase===1?SESSION_STATES.PLAYING_PHASE_1:SESSION_STATES.PLAYING_PHASE_2);
+  Object.values(runtimes).forEach(r=>cancelFade(r.player));
+  const p=activePlayer();p.volume=1;
+  try{if(p.paused)await p.play()}catch(err){session.running=false;setSessionState(SESSION_STATES.PAUSED);throw err}
+  recalculateSessionDeadline();startTicker();saveSessionState();updateMediaPlaybackState();
+  paintTimeline(session.elapsed,sessionTotalSeconds());
+  $('miniStatus').textContent=`本次已累计延长 ${Math.round(session.extensionSeconds/60)} 分钟 · 默认定时未改变`;
+  if(navigator.vibrate)navigator.vibrate([50,40,50]);
+  toast(`${wasFinishing?'已撤销结束并':''}延长本次播放 ${minutes} 分钟`,3200);
+  return true
+}
+$('shakeToggle').onclick=async()=>{
+  if(!settings.shakeEnabled&&typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){
+    try{
+      const permission=await DeviceMotionEvent.requestPermission();
+      if(permission!=='granted'){toast('需要动作传感器权限才能识别摇一摇');return}
+    }catch(err){toast('动作传感器权限请求失败');recordDiagnostic('shake-permission',err);return}
   }
-  
-  settings.shakeEnabled = !settings.shakeEnabled;
-  saveSettings();
-  
-  if (settings.shakeEnabled) {
-    window.addEventListener('devicemotion', handleDeviceMotion);
-    toast('摇一摇延时已开启');
-  } else {
-    window.removeEventListener('devicemotion', handleDeviceMotion);
-    lastX = null; 
-  }
+  settings.shakeEnabled=!settings.shakeEnabled;saveSettings();setShakeListener(settings.shakeEnabled);
+  toast(settings.shakeEnabled?`摇一摇已开启，每次延长 ${settings.shakeMinutes} 分钟`:'摇一摇延时已关闭')
 };
-
-if (settings.shakeEnabled) {
-  window.addEventListener('devicemotion', handleDeviceMotion);
-}
+setShakeListener(settings.shakeEnabled);
 
 /* ---------- 入口 ---------- */
 $('btnStats').onclick=()=>{renderStats();openSheet('statsSheet')};
@@ -1433,7 +1560,7 @@ async function init(){
   let migrated=false;
   try{
     await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
-    $('miniStatus').textContent='V1.2.4.2 稳定版：修复锁屏切歌与摇一摇误触';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
+    $('miniStatus').textContent='V1.2.5：会话级延时、可取消结束流程与统一版本已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
   }catch(err){toast(`关键初始化失败：${err.message}`,5000);showHealthBanner(`关键初始化失败：${err.message}。顶部入口和诊断功能仍可使用。`)}finally{registerServiceWorker()}
