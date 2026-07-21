@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4.1 · 底部安全区修复</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.4.2 · 锁屏优化与防误触</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -447,7 +447,7 @@ input[type=file]{display:none}
       <div class="button-row"><button class="small-btn" id="resetUiBtn">重置界面</button><button class="small-btn" id="safeModeBtn">安全重启</button></div>
     </div>
     <div class="setting-row">
-      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4.1 · Schema 12</div></div>
+      <div class="setting-main"><div class="setting-name">版本与更新</div><div class="setting-desc" id="versionInfo">当前 V1.2.4.2 · Schema 12</div></div>
       <button class="small-btn" id="checkUpdateBtn">检查更新</button>
     </div>
     <div class="setting-row">
@@ -456,7 +456,6 @@ input[type=file]{display:none}
     </div>
   </div>
 </div></div>
-
 
 <!-- 回收站 -->
 <div class="overlay" id="trashSheet"><div class="sheet">
@@ -484,7 +483,7 @@ input[type=file]{display:none}
 
 <script>
 'use strict';
-const APP_VERSION='1.2.4.1';
+const APP_VERSION='1.2.4.2';
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
 const AUDIO_EXT=/\.(mp3|m4a|wav|aac|ogg|mp4|webm)$/i;
 const STATS_KEY='xs_daily_stats';
@@ -1148,7 +1147,22 @@ async function persistTrackProgress(phase,force=false){
   try{await updateTrackMeta(meta)}catch(err){console.warn('保存节目进度失败',err)}
 }
 async function markTrackCompleted(track){if(!track)return;track.completed=true;track.lastPosition=0;track.lastPlayedAt=Date.now();await updateTrackMeta(track)}
-function fadeVolume(player,from,to,ms){return new Promise(resolve=>{if(!settings.fadeEnabled||ms<50){player.volume=to;resolve();return}const start=performance.now(),step=now=>{const t=clamp((now-start)/ms,0,1);player.volume=from+(to-from)*t;if(t<1)requestAnimationFrame(step);else resolve()};requestAnimationFrame(step)})}
+
+/* 修复1：锁屏不切歌（在后台直接跳过淡出动画） */
+function fadeVolume(player,from,to,ms){
+  return new Promise(resolve=>{
+    if(!settings.fadeEnabled || ms<50 || document.hidden){
+      player.volume=to;resolve();return;
+    }
+    const start=performance.now(),step=now=>{
+      const t=clamp((now-start)/ms,0,1);
+      player.volume=from+(to-from)*t;
+      if(t<1)requestAnimationFrame(step);else resolve();
+    };
+    requestAnimationFrame(step);
+  });
+}
+
 async function startNewSession(){
   const t1=chooseTrack(1);if(!t1){toast('开场没有可用音频，请先在资料库添加');openSheet('librarySheet');return}const t2=settings.p2Type==='none'?null:chooseTrack(2);if(settings.p2Type!=='none'&&!t2){toast('收尾没有可用音频，请调整艺术家或作品');return}
   stopTicker();releasePhase(2);session={has:true,running:false,switching:false,finishing:false,phase:1,elapsed:0,startMs:0,phaseTracks:{1:t1.id,2:t2?.id||null},lastSavedAt:0};await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
@@ -1162,7 +1176,7 @@ function pauseSession(){if(!session.running)return;captureMediaProgress(session.
 async function togglePlayback(){if(session.running)pauseSession();else if(session.has)await playSession();else await startNewSession()}
 async function switchPhase(){
   if(session.switching||session.finishing||settings.p2Type==='none')return;session.switching=true;const old=runtimes[1];captureMediaProgress(1);flushPlayTime();await persistTrackProgress(1,true);$('nowPhase').textContent='开场淡出…';await fadeVolume(old.player,old.player.volume,0,900);old.player.pause();session.phase=2;
-  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState();scheduleBoundaryTimer()}
+  try{if(!runtimes[2].trackId)await loadTrack(2,session.phaseTracks[2],null);const r=runtimes[2];r.player.volume=settings.fadeEnabled&&!document.hidden?0:1;await r.player.play();addHistory(r.meta);await fadeVolume(r.player,r.player.volume,1,1200);r.lastMediaTime=r.player.currentTime||0;session.switching=false;consecutiveErrors=0;updateNowPlaying(r.meta,2);saveSessionState();scheduleBoundaryTimer()}
   catch(err){session.switching=false;await handleAudioError(2,err)}
 }
 async function playNext(phase=session.phase,{markCompleted=false}={}){
@@ -1338,10 +1352,10 @@ async function checkForUpdates(){if(!swRegistration)await registerServiceWorker(
 }
 $('updateNowBtn').onclick=()=>{const worker=swRegistration?.waiting;if(worker){worker.postMessage({type:'SKIP_WAITING'});$('updateText').textContent='正在切换到新版本…'}else toast('更新尚未准备完成')};$('updateLaterBtn').onclick=()=>$('updateBanner').classList.remove('show');$('checkUpdateBtn').onclick=checkForUpdates;
 
-/* ---------- 摇一摇延时引擎 ---------- */
+/* ---------- 修复2：摇一摇灵敏度引擎优化 ---------- */
 let lastShakeTime = 0;
 let lastX = null, lastY = null, lastZ = null;
-const SHAKE_THRESHOLD = 15; // 灵敏度阈值
+const SHAKE_THRESHOLD = 25; // 灵敏度阈值：由 15 调高到了 25，显著降低放下手机时的误触率
 
 function handleDeviceMotion(e) {
   if (!settings.shakeEnabled || !session.running || settings.playToEnd) return;
@@ -1419,7 +1433,7 @@ async function init(){
   let migrated=false;
   try{
     await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
-    $('miniStatus').textContent='V1.2.4 稳定版：自检、回收站、异常隔离与更新提示已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
+    $('miniStatus').textContent='V1.2.4.2 稳定版：修复锁屏切歌与摇一摇误触';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
   }catch(err){toast(`关键初始化失败：${err.message}`,5000);showHealthBanner(`关键初始化失败：${err.message}。顶部入口和诊断功能仍可使用。`)}finally{registerServiceWorker()}
