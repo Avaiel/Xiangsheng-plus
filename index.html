@@ -897,7 +897,7 @@ $('timerGrid').onclick=e=>{
     restoreTimelineView();
   }
 
-  saveSettings();renderTimer();updateMediaPlaybackState();
+  saveSettings();updateModeUI();updateMediaPlaybackState();
 };
 $('configToggle').onclick=()=>{const p=$('configPanel');p.classList.toggle('collapsed');$('configToggle').textContent=p.classList.contains('collapsed')?'展开':'收起'};
 $('manualToggle').onclick=()=>{settings.manualMode=!settings.manualMode;saveSettings()};
