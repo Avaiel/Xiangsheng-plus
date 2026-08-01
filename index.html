@@ -884,12 +884,20 @@ document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
 $('switchSlider').oninput=e=>$('switchText').textContent=`${e.target.value} 分钟`;
 $('switchSlider').onchange=e=>{settings.switchMinutes=Number(e.target.value);saveSettings()};
 $('timerGrid').onclick=e=>{
-  const btn=e.target.closest('.pill');if(!btn)return;const raw=btn.dataset.min;
-  if(raw==='custom'){
-    const val=prompt('请输入定时时长（分钟）',String(settings.totalMinutes||45));if(val===null)return;const n=Number(val);if(!Number.isFinite(n)||n<=0){toast('请输入大于 0 的分钟数');return}
-    settings.totalMinutes=n;settings.playToEnd=false;btn.textContent=`${n} 分钟`;
-  }else if(raw==='-1')settings.playToEnd=true;else{settings.totalMinutes=Number(raw);settings.playToEnd=false}
-  if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes)settings.switchMinutes=Math.max(1,settings.totalMinutes-1);saveSettings();
+  const b=e.target.closest('.pill');if(!b)return;
+  const raw=b.dataset.min;
+  if(raw==='-1')settings.playToEnd=true;else{settings.totalMinutes=Number(raw);settings.playToEnd=false}
+  if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes)settings.switchMinutes=0;
+
+  // V1.2.6：修改定时后同步当前播放会话截止时间
+  if(session && session.has && session.running){
+    recalculateSessionDeadline();
+    saveSessionState();
+    scheduleBoundaryTimer();
+    restoreTimelineView();
+  }
+
+  saveSettings();renderTimer();updateMediaPlaybackState();
 };
 $('configToggle').onclick=()=>{const p=$('configPanel');p.classList.toggle('collapsed');$('configToggle').textContent=p.classList.contains('collapsed')?'展开':'收起'};
 $('manualToggle').onclick=()=>{settings.manualMode=!settings.manualMode;saveSettings()};
@@ -1563,7 +1571,13 @@ async function init(){
     $('miniStatus').textContent='V1.2.5：会话级延时、可取消结束流程与统一版本已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
-  }catch(err){toast(`关键初始化失败：${err.message}`,5000);showHealthBanner(`关键初始化失败：${err.message}。顶部入口和诊断功能仍可使用。`)}finally{registerServiceWorker()}
+  }catch(err){
+    recordDiagnostic('boot-fatal',err);
+    toast(`关键初始化失败：${err.message}`,5000);
+    showHealthBanner(`关键初始化失败：${err.message}。顶部入口和诊断功能仍可使用。`);
+  }finally{
+    try{await registerServiceWorker()}catch(swErr){recordDiagnostic('sw-register',swErr)}
+  }
 }
 init();
 
