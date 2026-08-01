@@ -897,11 +897,27 @@ $('timerGrid').onclick=e=>{
 
   // V1.2.6：修改定时后同步当前播放会话截止时间
   if(session && session.has && session.running){
+
+    // 同步当前播放会话总时长
+    if(!settings.playToEnd){
+        session.baseDurationSeconds =
+            Number(settings.totalMinutes) * 60;
+    }
+
     recalculateSessionDeadline();
+
     saveSessionState();
+
     scheduleBoundaryTimer();
+
     restoreTimelineView();
-  }
+
+    // 强制刷新时间轴
+    paintTimeline(
+        session.elapsed,
+        sessionTotalSeconds()
+    );
+}
 
   saveSettings();updateModeUI();updateMediaPlaybackState();
 };
