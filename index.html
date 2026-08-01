@@ -889,11 +889,79 @@ document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
 });
 $('switchSlider').oninput=e=>$('switchText').textContent=`${e.target.value} 分钟`;
 $('switchSlider').onchange=e=>{settings.switchMinutes=Number(e.target.value);saveSettings()};
+  function updateSessionDuration(minutes){
+
+    minutes = Number(minutes);
+
+    if(!Number.isFinite(minutes) || minutes <= 0){
+        return;
+    }
+
+
+    // 当前正在播放，修改当前会话总时长
+    if(session && session.has){
+
+        session.baseDurationSeconds = minutes * 60;
+
+
+        // 按总时长一半重新计算阶段切换点
+        if(settings.p2Type !== 'none'){
+
+            settings.switchMinutes =
+                Math.floor(minutes / 2);
+
+        }
+
+
+        // 保持当前播放进度
+        session.elapsed = sessionElapsedNow();
+
+
+        // 重新计算结束时间
+        recalculateSessionDeadline();
+
+
+        // 重新安排定时器
+        scheduleBoundaryTimer();
+
+
+        // 保存会话
+        saveSessionState();
+
+
+        // 刷新时间轴
+        restoreTimelineView();
+
+    }
+}
 $('timerGrid').onclick=e=>{
   const b=e.target.closest('.pill');if(!b)return;
   const raw=b.dataset.min;
-  if(raw==='-1')settings.playToEnd=true;else{settings.totalMinutes=Number(raw);settings.playToEnd=false}
-  if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes)settings.switchMinutes=0;
+ if(raw==='-1'){
+
+    settings.playToEnd=true;
+
+}else{
+
+    settings.totalMinutes=Number(raw);
+
+    settings.playToEnd=false;
+
+
+    // 新增：同步当前播放时间轴
+    updateSessionDuration(
+        settings.totalMinutes
+    );
+
+}
+
+
+if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes){
+
+    settings.switchMinutes=
+        Math.floor(settings.totalMinutes/2);
+
+}
 
   // V1.2.6：修改定时后同步当前播放会话截止时间
   if(session && session.has && session.running){
@@ -1186,6 +1254,61 @@ function sessionRemainingSeconds(){
 function recalculateSessionDeadline(){
   session.deadlineAt=session.running&&!settings.playToEnd?Date.now()+sessionRemainingSeconds()*1000:0;
   return session.deadlineAt;
+}
+  function updateSessionDuration(minutes){
+
+    minutes = Number(minutes);
+
+    if(!Number.isFinite(minutes) || minutes <=0){
+        return;
+    }
+
+
+    // 修改当前会话总时长
+    if(session && session.has){
+
+        session.baseDurationSeconds =
+            minutes * 60;
+
+
+        // 当前已经播放时间保持不变
+        session.elapsed =
+            sessionElapsedNow();
+
+
+        // 如果存在第二阶段
+        // 根据新总时长重新计算切换点
+
+        if(settings.p2Type!=='none'){
+
+            settings.switchMinutes =
+                Math.floor(minutes / 2);
+
+        }
+
+
+        // 重新计算结束时间
+
+        recalculateSessionDeadline();
+
+
+        // 重新设置定时器
+
+        scheduleBoundaryTimer();
+
+
+        // 保存
+
+        saveSessionState();
+
+
+        // 刷新整个时间轴
+
+        restoreTimelineView();
+
+
+    }
+
 }
 let session=createSession();
 let finishGeneration=0;
