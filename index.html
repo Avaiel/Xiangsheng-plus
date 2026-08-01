@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.5 · 会话稳定收口</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.6 · 定时动态调整与启动稳定</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -493,9 +493,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.2.5',
+  appVersion:'1.2.6',
   schemaVersion:12,
-  cacheVersion:'20260721-01'
+  cacheVersion:'20260801-01'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -1568,7 +1568,7 @@ async function init(){
   let migrated=false;
   try{
     await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
-    $('miniStatus').textContent='V1.2.5：会话级延时、可取消结束流程与统一版本已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
+    $('miniStatus').textContent='V1.2.6：定时动态调整、启动稳定保护已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
   }catch(err){
