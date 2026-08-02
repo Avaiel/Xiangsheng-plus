@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.6.2 · 定时与会话稳定修复</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.6.2-fix2 · 定时与会话稳定修复</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -1342,8 +1342,13 @@ async function refreshCurrentProgram(){
       toast(selectedSeries(phase)?.playMode==='sequential'?`已切换到下一集：${next.title}`:`已换一段：${next.title}`,2600);
     }
     const active=runtimes[phase];active.player.volume=1;session.running=wasRunning;
-    // 更换节目不重置睡眠倒计时
-    keepSessionTimelineAfterTrackChange();
+
+    // 更换节目视为新的播放任务：重置睡眠倒计时
+    session.elapsed = 0;
+    session.startMs = Date.now();
+    session.deadlineAt = 0;
+    recalculateSessionDeadline();
+    scheduleBoundaryTimer();
     if(wasRunning)await active.player.play();
     consecutiveErrors=0;await persistTrackProgress(phase,true);saveSessionState();updateMediaPlaybackState();updateMediaPosition();renderLibrary();
   }catch(err){

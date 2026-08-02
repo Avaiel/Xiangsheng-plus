@@ -1,4 +1,4 @@
-const BUILD_INFO = Object.freeze({ appVersion: '1.2.6.2', cacheVersion: '20260802-01' });
+const BUILD_INFO = Object.freeze({ appVersion: '1.2.6.2-fix2', cacheVersion: '20260802-02' });
 const SW_VERSION = BUILD_INFO.appVersion;
 const CACHE_NAME = `xiangsheng-cache-${BUILD_INFO.appVersion}-${BUILD_INFO.cacheVersion}`;
 const APP_SHELL = [
