@@ -906,12 +906,36 @@ if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes){
     settings.switchMinutes=Math.floor(settings.totalMinutes/2);
 }
 
-  // V1.2.6：修改定时后同步当前播放会话截止时间
-  if(session && session.has && session.running){
-    recalculateSessionDeadline();
-    saveSessionState();
-    scheduleBoundaryTimer();
-    restoreTimelineView();
+  // V1.2.6.3：播放中修改定时，同步当前 Session 时间轴
+  // 规则：
+  // 1. 修改定时 = 修改当前任务总时长
+  // 2. 保留已播放时间，不重新开始
+  // 3. 换音频另行处理
+  if(session && session.has){
+
+    if(!settings.playToEnd){
+
+      const elapsedNow = sessionElapsedNow();
+
+      session.baseDurationSeconds =
+        Number(settings.totalMinutes || 20) * 60;
+
+      // 保留当前已播放进度
+      session.elapsed = elapsedNow;
+
+      session.startMs =
+        Date.now() - elapsedNow * 1000;
+
+      recalculateSessionDeadline();
+
+      scheduleBoundaryTimer();
+
+      saveSessionState();
+
+      restoreTimelineView();
+
+    }
+
   }
 
   saveSettings();updateModeUI();updateMediaPlaybackState();
