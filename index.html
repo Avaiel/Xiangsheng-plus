@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.6.2-fix2 · 定时与会话稳定修复</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.3.0-alpha.1 · 睡前陪伴升级</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -291,6 +291,12 @@ input[type=file]{display:none}
     <div class="resume-card" id="resumeCard">
       <div class="resume-main"><div class="resume-title" id="resumeTitle">继续上次播放</div><div class="resume-sub" id="resumeSub"></div></div>
       <div class="resume-actions"><button class="small-btn primary" id="resumeYes">继续</button><button class="small-btn" id="resumeNo">放弃</button></div>
+    </div>
+
+    <div class="companion-card" id="companionCard" style="display:none;background:linear-gradient(135deg,var(--card2),var(--card));border:1px solid var(--ember-dark);border-radius:16px;padding:12px;margin:0 0 10px;">
+      <div style="font-size:13px;color:var(--ember2);font-weight:700;">🌙 继续昨晚</div>
+      <div id="companionText" style="font-size:12px;margin-top:6px;color:var(--ink);"></div>
+      <button class="small-btn primary" id="companionResume" style="margin-top:8px;">继续播放</button>
     </div>
 
     <div class="hero">
@@ -493,9 +499,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.2.6.2',
+  appVersion:'1.3.0-alpha.1',
   schemaVersion:12,
-  cacheVersion:'20260802-01'
+  cacheVersion:'20260802-v13a1'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -1640,5 +1646,6 @@ async function init(){
 init();
 
 </script>
+<script src="./js/v13/home-recommend.js"></script>
 </body>
 </html>
