@@ -1,57 +1,52 @@
-
 /**
- * Xiangsheng-plus V1.3.0-alpha.1.1
- * Home Recommend Fix
+ * V1.3.0-alpha.1.2
+ * Resume Fix
  *
- * 修复：
- * 1. 继续播放按钮无法触发恢复
- * 2. 恢复后主播放区域不同步
+ * 说明：
+ * 不再创建第二个“继续昨晚”入口。
+ * 统一使用原有 resumeCard -> resumeYes -> restoreSession。
  */
 
-const HomeRecommend = {
+const ResumeUpgrade = {
+    render(saved){
 
-    render(){
+        const card = document.getElementById('resumeCard');
+        const title = document.getElementById('resumeTitle');
+        const sub = document.getElementById('resumeSub');
+        const btn = document.getElementById('resumeYes');
+        const cancel = document.getElementById('resumeNo');
 
-        const card = document.querySelector('#resumeCard');
-        if(!card) return;
+        if(!card || !saved) return;
 
-        const saved = readJson(SESSION_KEY, null);
+        title.textContent = '▶ 继续播放';
 
-        if(!saved) return;
+        const position =
+            saved.positions?.[saved.phase] ||
+            saved.elapsed ||
+            0;
 
-        const btn = document.querySelector('#resumeYes');
+        sub.textContent =
+            `${saved.title || '未知节目'} · 已播放 ${Math.floor(position/60)} 分钟`;
 
-        if(btn){
+        btn.textContent = '继续播放';
 
-            btn.onclick = async()=>{
+        btn.onclick = async()=>{
 
-                try{
+            await restoreSession(saved);
 
-                    await restoreSession(saved);
+        };
 
-                    updateNowPlaying(
-                        activeRuntime().meta,
-                        session.phase
-                    );
+        cancel.textContent = '清除记录';
 
-                    updateMediaPlaybackState();
+        cancel.onclick = ()=>{
 
-                }catch(err){
+            card.classList.remove('show');
+            localStorage.removeItem(SESSION_KEY);
 
-                    toast(
-                        `恢复失败：${err.message}`,
-                        3000
-                    );
+        };
 
-                }
-
-            };
-
-        }
-
+        card.classList.add('show');
     }
-
 };
 
-
-window.HomeRecommend = HomeRecommend;
+window.ResumeUpgrade = ResumeUpgrade;
