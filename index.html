@@ -269,18 +269,12 @@ input[type=file]{display:none}
   .app{max-width:520px;margin:auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}
   .sheet{max-width:560px;left:50%;right:auto;width:100%;transform:translateX(-50%)}
 }
-
-.favorite-star{
-  border:0;background:transparent;color:var(--dim);
-  font-size:16px;padding:4px;
-}
-.favorite-star.active{color:var(--ember2)}
 </style>
 </head>
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.3.0-alpha.3 · 收藏体验升级</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.6.2 · 定时与会话稳定修复</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -499,9 +493,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.3.0-alpha.3',
+  appVersion:'1.2.6.2',
   schemaVersion:12,
-  cacheVersion:'20260801-alpha3'
+  cacheVersion:'20260802-01'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -889,103 +883,36 @@ document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
 });
 $('switchSlider').oninput=e=>$('switchText').textContent=`${e.target.value} 分钟`;
 $('switchSlider').onchange=e=>{settings.switchMinutes=Number(e.target.value);saveSettings()};
-  function updateSessionDuration(minutes){
-
-    minutes = Number(minutes);
-
-    if(!Number.isFinite(minutes) || minutes <= 0){
-        return;
-    }
-
-
-    // 当前正在播放，修改当前会话总时长
-    if(session && session.has){
-
-        session.baseDurationSeconds = minutes * 60;
-
-
-        // 按总时长一半重新计算阶段切换点
-        if(settings.p2Type !== 'none'){
-
-            settings.switchMinutes =
-                Math.floor(minutes / 2);
-
-        }
-
-
-        // 保持当前播放进度
-        session.elapsed = sessionElapsedNow();
-
-
-        // 重新计算结束时间
-        recalculateSessionDeadline();
-
-
-        // 重新安排定时器
-        scheduleBoundaryTimer();
-
-
-        // 保存会话
-        saveSessionState();
-
-
-        // 刷新时间轴
-        restoreTimelineView();
-
-    }
-}
 $('timerGrid').onclick=e=>{
   const b=e.target.closest('.pill');if(!b)return;
   const raw=b.dataset.min;
- if(raw==='-1'){
-
+  if(raw==='-1'){
     settings.playToEnd=true;
-
-}else{
-
-    settings.totalMinutes=Number(raw);
-
+}else if(raw==='custom'){
+    const value=prompt('请输入播放时长（分钟）', settings.totalMinutes || 20);
+    const minutes=Number(value);
+    if(!Number.isFinite(minutes)||minutes<=0){
+        toast('请输入正确的分钟数');
+        return;
+    }
+    settings.totalMinutes=Math.min(minutes,720);
     settings.playToEnd=false;
-
-
-    // 新增：同步当前播放时间轴
-    updateSessionDuration(
-        settings.totalMinutes
-    );
-
+}else{
+    settings.totalMinutes=Number(raw);
+    settings.playToEnd=false;
 }
 
-
 if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes){
-
-    settings.switchMinutes=
-        Math.floor(settings.totalMinutes/2);
-
+    settings.switchMinutes=Math.floor(settings.totalMinutes/2);
 }
 
   // V1.2.6：修改定时后同步当前播放会话截止时间
   if(session && session.has && session.running){
-
-    // 同步当前播放会话总时长
-    if(!settings.playToEnd){
-        session.baseDurationSeconds =
-            Number(settings.totalMinutes) * 60;
-    }
-
     recalculateSessionDeadline();
-
     saveSessionState();
-
     scheduleBoundaryTimer();
-
     restoreTimelineView();
-
-    // 强制刷新时间轴
-    paintTimeline(
-        session.elapsed,
-        sessionTotalSeconds()
-    );
-}
+  }
 
   saveSettings();updateModeUI();updateMediaPlaybackState();
 };
@@ -1255,61 +1182,6 @@ function recalculateSessionDeadline(){
   session.deadlineAt=session.running&&!settings.playToEnd?Date.now()+sessionRemainingSeconds()*1000:0;
   return session.deadlineAt;
 }
-  function updateSessionDuration(minutes){
-
-    minutes = Number(minutes);
-
-    if(!Number.isFinite(minutes) || minutes <=0){
-        return;
-    }
-
-
-    // 修改当前会话总时长
-    if(session && session.has){
-
-        session.baseDurationSeconds =
-            minutes * 60;
-
-
-        // 当前已经播放时间保持不变
-        session.elapsed =
-            sessionElapsedNow();
-
-
-        // 如果存在第二阶段
-        // 根据新总时长重新计算切换点
-
-        if(settings.p2Type!=='none'){
-
-            settings.switchMinutes =
-                Math.floor(minutes / 2);
-
-        }
-
-
-        // 重新计算结束时间
-
-        recalculateSessionDeadline();
-
-
-        // 重新设置定时器
-
-        scheduleBoundaryTimer();
-
-
-        // 保存
-
-        saveSessionState();
-
-
-        // 刷新整个时间轴
-
-        restoreTimelineView();
-
-
-    }
-
-}
 let session=createSession();
 let finishGeneration=0;
 let ticker=null,boundaryTimer=null,unflushedPlay=0,audioCtx=null,audioNodes={},consecutiveErrors=0;
@@ -1442,6 +1314,16 @@ function chooseRefreshTrack(phase,currentId){
   const pool=alternatives.length?alternatives:list;
   return pool[Math.floor(Math.random()*pool.length)]||null;
 }
+function keepSessionTimelineAfterTrackChange(){
+  const elapsed=sessionElapsedNow();
+  session.elapsed=elapsed;
+  session.startMs=Date.now()-elapsed*1000;
+  recalculateSessionDeadline();
+  scheduleBoundaryTimer();
+  saveSessionState();
+  restoreTimelineView();
+}
+
 async function refreshCurrentProgram(){
   if(!session.has){toast('尚未开始播放');return}
   if(refreshProgramBusy||session.switching||session.finishing){toast('正在切换节目，请稍候');return}
@@ -1460,6 +1342,8 @@ async function refreshCurrentProgram(){
       toast(selectedSeries(phase)?.playMode==='sequential'?`已切换到下一集：${next.title}`:`已换一段：${next.title}`,2600);
     }
     const active=runtimes[phase];active.player.volume=1;session.running=wasRunning;
+    // 更换节目不重置睡眠倒计时
+    keepSessionTimelineAfterTrackChange();
     if(wasRunning)await active.player.play();
     consecutiveErrors=0;await persistTrackProgress(phase,true);saveSessionState();updateMediaPlaybackState();updateMediaPosition();renderLibrary();
   }catch(err){
@@ -1727,8 +1611,5 @@ async function init(){
 init();
 
 </script>
-<script src="./js/v13/migration-v13.js"></script>
-<script src="./js/v13/favorite.js"></script>
-<script src="./js/v13/sleep-session.js"></script>
 </body>
 </html>
