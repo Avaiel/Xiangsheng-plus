@@ -274,7 +274,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.3.0-alpha.1 · 睡前陪伴升级</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.7 Stable · 连续陪伴修复</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -291,12 +291,6 @@ input[type=file]{display:none}
     <div class="resume-card" id="resumeCard">
       <div class="resume-main"><div class="resume-title" id="resumeTitle">继续上次播放</div><div class="resume-sub" id="resumeSub"></div></div>
       <div class="resume-actions"><button class="small-btn primary" id="resumeYes">继续</button><button class="small-btn" id="resumeNo">放弃</button></div>
-    </div>
-
-    <div class="companion-card" id="companionCard" style="display:none;background:linear-gradient(135deg,var(--card2),var(--card));border:1px solid var(--ember-dark);border-radius:16px;padding:12px;margin:0 0 10px;">
-      <div style="font-size:13px;color:var(--ember2);font-weight:700;">🌙 继续昨晚</div>
-      <div id="companionText" style="font-size:12px;margin-top:6px;color:var(--ink);"></div>
-      <button class="small-btn primary" id="companionResume" style="margin-top:8px;">继续播放</button>
     </div>
 
     <div class="hero">
@@ -499,9 +493,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.3.0-alpha.1',
+  appVersion:'1.2.7',
   schemaVersion:12,
-  cacheVersion:'20260802-v13a1'
+  cacheVersion:'20260803-v127'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -889,6 +883,23 @@ document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
 });
 $('switchSlider').oninput=e=>$('switchText').textContent=`${e.target.value} 分钟`;
 $('switchSlider').onchange=e=>{settings.switchMinutes=Number(e.target.value);saveSettings()};
+function syncSessionDuration(minutes){
+  minutes=Number(minutes);
+  if(!Number.isFinite(minutes)||minutes<=0)return;
+  settings.totalMinutes=minutes;
+  settings.switchMinutes=Math.max(1,Math.floor(minutes/2));
+  if(session&&session.has&&!settings.playToEnd){
+    const elapsed=sessionElapsedNow();
+    session.baseDurationSeconds=minutes*60;
+    session.elapsed=elapsed;
+    session.startMs=Date.now()-elapsed*1000;
+    recalculateSessionDeadline();
+    scheduleBoundaryTimer();
+    saveSessionState();
+    restoreTimelineView();
+  }
+}
+
 $('timerGrid').onclick=e=>{
   const b=e.target.closest('.pill');if(!b)return;
   const raw=b.dataset.min;
@@ -897,15 +908,12 @@ $('timerGrid').onclick=e=>{
 }else if(raw==='custom'){
     const value=prompt('请输入播放时长（分钟）', settings.totalMinutes || 20);
     const minutes=Number(value);
-    if(!Number.isFinite(minutes)||minutes<=0){
-        toast('请输入正确的分钟数');
-        return;
-    }
-    settings.totalMinutes=Math.min(minutes,720);
+    if(!Number.isFinite(minutes)||minutes<=0){toast('请输入正确的分钟数');return;}
     settings.playToEnd=false;
+    syncSessionDuration(Math.min(minutes,720));
 }else{
-    settings.totalMinutes=Number(raw);
     settings.playToEnd=false;
+    syncSessionDuration(Number(raw));
 }
 
 if(!settings.playToEnd&&settings.switchMinutes>=settings.totalMinutes){
@@ -1324,9 +1332,20 @@ async function switchPhase(){
   }catch(err){session.switching=false;setSessionState(SESSION_STATES.ERROR);await handleAudioError(2,err)}
 }
 
+function calculateAutoNextTrack(phase,currentId){
+  const series=selectedSeries(phase);
+  const list=candidateTracks(phase).sort(trackSort);
+  if(!list.length)return null;
+  if(series?.playMode==='sequential'){
+    const index=list.findIndex(t=>t.id===currentId);
+    if(index>=0 && list[index+1])return list[index+1];
+  }
+  return list.find(t=>t.id!==currentId)||null;
+}
+
 async function playNext(phase=session.phase,{markCompleted=false}={}){
   const current=runtimes[phase].meta;if(current){captureMediaProgress(phase);flushPlayTime();if(markCompleted)await markTrackCompleted(current);else await persistTrackProgress(phase,true)}
-  const next=chooseTrack(phase,current?.id||null,true);
+  const next=calculateAutoNextTrack(phase,current?.id||null);
   if(!next){if(phase===1&&settings.p2Type!=='none')await switchPhase();else await finishSession(selectedSeries(phase)?.playMode==='sequential'?'本作品已播完':'当前分组没有其他节目');return}
   try{await loadTrack(phase,next.id,null);session.phaseTracks[phase]=next.id;addHistory(next);if(session.running){runtimes[phase].player.volume=1;await runtimes[phase].player.play()}consecutiveErrors=0;saveSessionState()}
   catch(err){await handleAudioError(phase,err)}
