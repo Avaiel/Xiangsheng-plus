@@ -1,7 +1,7 @@
-// Xiangsheng-plus Service Worker V1.2.7
+// Xiangsheng-plus Service Worker V1.2.8
 const BUILD_INFO = Object.freeze({
-  appVersion: '1.2.7',
-  cacheVersion: '20260803-v127'
+  appVersion: '1.2.8',
+  cacheVersion: '20261018-v128'
 });
 
 const CACHE_NAME = `xiangsheng-cache-${BUILD_INFO.appVersion}-${BUILD_INFO.cacheVersion}`;

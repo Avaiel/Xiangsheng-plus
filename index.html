@@ -55,6 +55,18 @@ body{overflow:hidden}
 .resume-sub{font-size:11px;color:var(--dim);margin-top:3px}
 .resume-actions{display:flex;gap:7px}
 
+/* V1.2.8 继续听：跨会话记住听到哪一回、听到第几分钟 */
+.binge-card{
+  display:none;background:linear-gradient(135deg,var(--card2),var(--card));
+  border:1px solid var(--ember-dark);border-radius:16px;padding:12px;margin:0 0 10px;
+  box-shadow:var(--shadow);align-items:center;gap:12px
+}
+.binge-card.show{display:flex}
+.binge-main{min-width:0;flex:1}
+.binge-title{font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.binge-sub{font-size:11px;color:var(--dim);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.binge-actions{display:flex;gap:7px;flex:0 0 auto}
+
 .hero{text-align:center;padding:8px 4px 10px}
 .fan{width:54px;height:54px;opacity:.9;margin:auto}
 .fan.playing{animation:breathe 4.5s ease-in-out infinite}
@@ -224,7 +236,7 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .series-card.current-series{border-color:var(--ember);box-shadow:0 0 0 1px rgba(201,123,63,.18)}
 .series-head{display:flex;align-items:center;gap:7px;padding:10px 8px}
 .series-main{min-width:0;flex:1}.series-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.series-meta{font-size:9px;color:var(--dim);margin-top:3px}
-.mode-badge{font-size:9px;border:1px solid var(--line);border-radius:9px;padding:3px 6px;color:var(--dim);flex:0 0 auto}.mode-badge.sequential{color:var(--ember2);border-color:var(--ember-dark)}
+.mode-badge{font-size:9px;border:1px solid var(--line);border-radius:9px;padding:3px 6px;color:var(--dim);flex:0 0 auto;background:transparent;font-family:inherit;line-height:1.3}.mode-badge.sequential{color:var(--ember2);border-color:var(--ember-dark)}
 .episode-no{width:25px;flex:0 0 25px;text-align:center;font-variant-numeric:tabular-nums;font-size:10px;color:var(--ember2)}
 .track.completed .track-title{text-decoration:line-through;opacity:.62}.track.completed .episode-no{opacity:.55}
 .empty.compact{padding:14px 8px}
@@ -274,7 +286,7 @@ input[type=file]{display:none}
 <body>
 <div class="app">
   <div class="topbar">
-    <div class="brand"><h1>睡前相声</h1><span class="version">V1.2.7 Stable · 连续陪伴修复</span></div>
+    <div class="brand"><h1>睡前相声</h1><span class="version" id="brandVersion">V1.2.8 Stable · 整本连播</span></div>
     <div class="top-actions">
       <button class="icon-btn" id="btnStats" aria-label="收听统计"><svg viewBox="0 0 24 24"><path d="M4 19h16v2H4zM6 10h3v7H6zm5-5h3v12h-3zm5 8h3v4h-3z"/></svg></button>
       <button class="icon-btn" id="btnLibrary" aria-label="音频资料库"><svg viewBox="0 0 24 24"><path d="M4 5a2 2 0 0 1 2-2h5l2 2h5a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm2 2v11h12V7H6z"/></svg></button>
@@ -291,6 +303,11 @@ input[type=file]{display:none}
     <div class="resume-card" id="resumeCard">
       <div class="resume-main"><div class="resume-title" id="resumeTitle">继续上次播放</div><div class="resume-sub" id="resumeSub"></div></div>
       <div class="resume-actions"><button class="small-btn primary" id="resumeYes">继续</button><button class="small-btn" id="resumeNo">放弃</button></div>
+    </div>
+
+    <div class="binge-card" id="bingeCard">
+      <div class="binge-main"><div class="binge-title" id="bingeTitle">继续听</div><div class="binge-sub" id="bingeSub"></div></div>
+      <div class="binge-actions"><button class="small-btn primary" id="bingeResume">继续</button><button class="small-btn" id="bingeRestart">从头</button></div>
     </div>
 
     <div class="hero">
@@ -493,9 +510,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.2.7',
+  appVersion:'1.2.8',
   schemaVersion:12,
-  cacheVersion:'20260803-v127'
+  cacheVersion:'20261018-v128'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -512,6 +529,7 @@ const MIGRATION_KEY='xs_v12_migration_notice';
 const MAX_SNAPSHOTS=20;
 const DIAG_KEY='xs_diagnostic_log_v124';
 const SAFE_MODE_KEY='xs_safe_mode_once_v124';
+const BINGE_KEY='xs_binge_mode_v128';
 const TRASH_RETENTION_MS=7*24*60*60*1000;
 const REQUIRED_STORES=['groups','trackMeta','trackBlob','artists','series','trash','trashPayload'];
 const DEFAULT_SETTINGS={
@@ -639,7 +657,8 @@ async function deleteRecords(stores,work){const db=await openDB(),tx=db.transact
 const library={artists:[],series:[],tracks:[],groups:[]};
 function unknownArtistId(type){return `v12-unknown-${type}`}
 function legacySeriesId(groupId){return `v12-series-${groupId}`}
-function defaultSeriesMode(type){return type==='duo'?'independent':'sequential'}
+/* V1.2.8：新建作品默认按“整本连播”处理，长篇（官场斗这类）才不会每次随机跳段 */
+function defaultSeriesMode(){return 'sequential'}
 async function ensureV12Migration(){
   const [artists,series,tracks,groups]=await Promise.all([getAll('artists'),getAll('series'),getAll('trackMeta'),getAll('groups')]);
   const artistMap=new Map(artists.map(x=>[x.id,x])),seriesMap=new Map(series.map(x=>[x.id,x]));
@@ -684,7 +703,7 @@ async function refreshLibrary(){
   library.artists.sort((a,b)=>naturalCompare(a.name,b.name));
   library.series.sort((a,b)=>naturalCompare(a.name,b.name));
   library.tracks.sort(trackSort);
-  renderLibrary();updateModeUI();updateStorageInfo();
+  renderLibrary();updateModeUI();updateStorageInfo();renderBingeCard();
 }
 function trackSort(a,b){
   const oa=Number.isFinite(a.order)?a.order:Number.MAX_SAFE_INTEGER,ob=Number.isFinite(b.order)?b.order:Number.MAX_SAFE_INTEGER;
@@ -1014,11 +1033,15 @@ function renderSeriesCard(series,q){
   const name=document.createElement('div');name.className='series-name';name.textContent=series.name;
   const meta=document.createElement('div');meta.className='series-meta';meta.textContent=`${all.length} 集 · ${done} 已听${totalDuration?` · ${formatDuration(totalDuration)}`:''}`;
   main.append(name,meta);
-  const mode=document.createElement('span');mode.className=`mode-badge ${series.playMode}`;mode.textContent=series.playMode==='sequential'?'连续':'独立';
+  const sequential=series.playMode==='sequential';
+  const mode=document.createElement('button');mode.className=`mode-badge ${series.playMode}`;
+  mode.textContent=sequential?`▶ 连播 ${done}/${all.length}`:'随机单段';
+  mode.title=sequential?'从上次听到的地方接着整本连播':'点击改为整本连播';
+  mode.onclick=e=>{e.stopPropagation();startSeriesBinge(series)};
   const actions=document.createElement('div');actions.className='group-actions';
   actions.append(
     makeTiny('＋音频',()=>chooseFiles(series.type,series.artistId,series.id)),
-    makeTiny(series.playMode==='sequential'?'连续':'独立',()=>toggleSeriesMode(series.id)),
+    makeTiny(sequential?'改随机':'改连播',()=>toggleSeriesMode(series.id)),
     makeTiny('更多',()=>seriesMenu(series))
   );
   head.append(arrow,main,mode,actions);head.onclick=()=>{const next=!seriesCollapsed(series.id);setSeriesCollapsed(series.id,next);renderLibrary()};card.appendChild(head);
@@ -1227,6 +1250,19 @@ function activeRuntime(){return runtimes[session.phase]}
 function activePlayer(){return activeRuntime().player}
 function candidateTracks(phase){const type=settings[`p${phase}Type`];if(type==='none')return[];return tracksFor(type,settings[`p${phase}Artist`],settings[`p${phase}Series`]).filter(t=>!t.missingBlob)}
 function selectedSeries(phase){const id=settings[`p${phase}Series`];return id&&id!=='*'?getSeries(id):null}
+function orderedSeriesTracks(phase){return [...candidateTracks(phase)].sort(trackSort)}
+/* 连播时决定“从哪一回开始”：优先上次听到的那一回（书签），其次第一回没听完的 */
+function resolveSeriesStart(series,ordered){
+  if(!ordered.length)return null;
+  const bookmark=series?.currentTrackId?ordered.find(t=>t.id===series.currentTrackId):null;
+  if(bookmark&&!bookmark.completed)return bookmark;
+  if(bookmark){
+    const idx=ordered.indexOf(bookmark);
+    const after=ordered.slice(idx+1).find(t=>!t.completed);
+    if(after)return after;
+  }
+  return ordered.find(t=>!t.completed)||ordered[0];
+}
 function chooseTrack(phase,excludeId=null,forNext=false){
   const list=candidateTracks(phase);if(!list.length)return null;
   if(settings.manualMode&&!forNext){const id=settings[`p${phase}Track`],fixed=list.find(t=>t.id===id);if(fixed)return fixed}
@@ -1234,7 +1270,7 @@ function chooseTrack(phase,excludeId=null,forNext=false){
   if(s?.playMode==='sequential'){
     const ordered=[...list].sort(trackSort);
     if(forNext&&excludeId){const idx=ordered.findIndex(t=>t.id===excludeId);return idx>=0?ordered[idx+1]||null:null}
-    const current=ordered.find(t=>t.id===s.currentTrackId&&!t.completed)||ordered.find(t=>!t.completed)||ordered[0];return current||null;
+    return resolveSeriesStart(s,ordered);
   }
   const pool=list.length>1?list.filter(t=>t.id!==excludeId):list;return pool[Math.floor(Math.random()*pool.length)]||null;
 }
@@ -1244,10 +1280,17 @@ async function loadTrack(phase,trackId,position=null){
   const r=runtimes[phase];if(r.url){URL.revokeObjectURL(r.url);r.url=null}r.player.pause();r.player.removeAttribute('src');r.player.load();r.url=URL.createObjectURL(record.blob);r.trackId=trackId;r.meta=meta;r.lastMediaTime=0;r.loading=true;
   try{
     r.player.src=r.url;r.player.load();await waitMediaReady(r.player);
-    const resumePos=position===null?(Number(meta.lastPosition)||0):Number(position)||0;if(resumePos>0)r.player.currentTime=Math.min(resumePos,Math.max(0,(r.player.duration||resumePos)-.1));
+    const resumePos=position===null?(Number(meta.lastPosition)||0):Number(position)||0;
+    /* V1.2.8：续播位置做边界保护，避免越界或把 currentTime 设成 NaN */
+    const mediaDuration=Number(r.player.duration);
+    const safeMax=Number.isFinite(mediaDuration)&&mediaDuration>0?Math.max(0,mediaDuration-1.2):Infinity;
+    const resumeAt=clamp(resumePos,0,safeMax);
+    if(resumeAt>3){try{r.player.currentTime=resumeAt}catch(err){recordDiagnostic('resume-seek',err)}}
+    r.resumedFrom=resumeAt>3?resumeAt:0;
     r.lastMediaTime=r.player.currentTime||0;r.lastProgressSavedAt=Date.now();
     const series=getSeries(meta.seriesId);if(series?.playMode==='sequential'&&series.currentTrackId!==meta.id){series.currentTrackId=meta.id;await updateSeriesMeta(series)}
     updateNowPlaying(meta,phase);updateMediaSession(meta);
+    if(position===null&&r.resumedFrom>0)toast(`继续《${seriesName(meta.seriesId)}》· 从 ${fmt(r.resumedFrom)} 开始`,2400)
   }finally{r.loading=false}
 }
 function updateNowPlaying(meta,phase=session.phase){
@@ -1289,6 +1332,89 @@ async function startNewSession(){
     extensionSeconds:0,phaseTracks:{1:t1.id,2:t2?.id||null}
   });
   await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
+}
+
+/* V1.2.8：从资料库里的某一回直接开播，之后按作品顺序自动连播 */
+async function startFromTrack(track,fromStart=false){
+  if(!track)return;
+  /* 先把正在播的那一回进度落盘，再干净地切走（不走 finishSession，避免闪一下“已结束”） */
+  if(session.has){
+    try{captureMediaProgress(session.phase);flushPlayTime();await persistTrackProgress(session.phase,true)}catch(err){recordDiagnostic('binge-flush',err)}
+  }
+  finishGeneration++;stopTicker();session.finishing=false;session.switching=false;session.running=false;session.has=false;
+  Object.values(runtimes).forEach(r=>{try{r.player.pause()}catch{}});
+  /* 连播语义要求取消“指定节目”的锁定，并把开场配置切到这一回所属的作品，
+     否则这一回播完后会按别的作品去排队 */
+  settings.manualMode=false;settings.p1Track='';
+  settings.p1Type=track.type;settings.p1Artist=track.artistId;settings.p1Series=track.seriesId;
+  const t2=settings.p2Type==='none'?null:chooseTrack(2);
+  releasePhase(2);
+  session=createSession({
+    id:makeId(),state:SESSION_STATES.LOADING,has:true,phase:1,
+    baseDurationSeconds:settings.playToEnd?0:(Number(settings.totalMinutes)||20)*60,
+    extensionSeconds:0,phaseTracks:{1:track.id,2:t2?.id||null}
+  });
+  persistSettings();updateModeUI();
+  await loadTrack(1,track.id,fromStart?0:null);
+  addHistory(track);await playSession();
+}
+
+/* 从资料库某部作品直接开“整本连播”：从上次听到的那一回、那个位置接着放 */
+async function startSeriesBinge(series){
+  const ordered=library.tracks.filter(t=>t.seriesId===series.id&&!t.missingBlob).sort(trackSort);
+  if(!ordered.length){toast('这个作品里还没有可播放的音频');return}
+  const start=resolveSeriesStart(series,ordered);
+  /* 点了连播就一定是连播，顺手把这部作品的模式切过来 */
+  if(series.playMode!=='sequential'){const next={...series,playMode:'sequential'};await putRecord('series',next);series.playMode='sequential';const idx=library.series.findIndex(x=>x.id===series.id);if(idx>=0)library.series[idx]=next}
+  settings.p1Type=series.type;settings.p1Artist=series.artistId;settings.p1Series=series.id;
+  if(settings.p2Series===series.id)settings.p2Type='none';
+  persistSettings();closeSheet('librarySheet');
+  await startFromTrack(start,false);
+}
+
+/* 最近一次听到一半、还没听完的那一回 */
+function bingeCandidate(){
+  const list=library.tracks.filter(t=>!t.missingBlob&&!t.completed&&Number(t.lastPosition)>5);
+  if(!list.length)return null;
+  return list.sort((a,b)=>(Number(b.lastPlayedAt)||0)-(Number(a.lastPlayedAt)||0))[0];
+}
+function renderBingeCard(){
+  const card=$('bingeCard');if(!card)return;
+  /* 有“继续上次播放”的会话卡片时先不重复出现，避免首页两个继续按钮 */
+  if(readJson(SESSION_KEY,null)||$('resumeCard').classList.contains('show')){card.classList.remove('show');return}
+  const track=bingeCandidate();
+  if(!track||!getSeries(track.seriesId)){card.classList.remove('show');return}
+  const series=getSeries(track.seriesId);
+  const ordered=library.tracks.filter(t=>t.seriesId===track.seriesId&&!t.missingBlob).sort(trackSort);
+  const index=ordered.findIndex(t=>t.id===track.id);
+  const epLabel=Number.isFinite(track.episodeNumber)?`第 ${track.episodeNumber} 回`:(index>=0?`第 ${index+1} 回`:'');
+  $('bingeTitle').textContent=`继续《${series.name}》${epLabel?` · ${epLabel}`:''}`;
+  const pct=track.duration>0?Math.round(track.lastPosition/track.duration*100):0;
+  const queue=series.playMode==='sequential'?`整本连播${ordered.length>1&&index>=0?` ${index+1}/${ordered.length}`:''}`:'随机单段';
+  $('bingeSub').textContent=`已听到 ${fmt(track.lastPosition)}${pct>0&&pct<100?`（${pct}%）`:''} · ${queue}`;
+  $('bingeResume').onclick=()=>startFromTrack(track,false);
+  $('bingeRestart').onclick=()=>startFromTrack(track,true);
+  card.classList.add('show');
+}
+
+/* 一次性把“多回长篇”设为整本连播，之后完全尊重手动设置 */
+async function ensureBingeModeMigration(){
+  if(localStorage.getItem(BINGE_KEY)==='1')return;
+  const changed=[];
+  for(const s of library.series){
+    if(s.playMode==='sequential')continue;
+    const list=library.tracks.filter(t=>t.seriesId===s.id&&!t.missingBlob);
+    if(list.length<3)continue;
+    const numbered=list.filter(t=>Number.isFinite(t.episodeNumber)).length;
+    if(numbered/list.length<0.8)continue;
+    const next={...s,playMode:'sequential'};
+    await putRecord('series',next);
+    const idx=library.series.findIndex(x=>x.id===s.id);
+    if(idx>=0)library.series[idx]=next;
+    changed.push(s.name);
+  }
+  localStorage.setItem(BINGE_KEY,'1');
+  if(changed.length)toast(`已把 ${changed.length} 部多回作品设为整本连播：${changed.slice(0,3).join('、')}${changed.length>3?' 等':''}`,4200);
 }
 
 async function playSession(){
@@ -1334,11 +1460,13 @@ async function switchPhase(){
 
 function calculateAutoNextTrack(phase,currentId){
   const series=selectedSeries(phase);
-  const list=candidateTracks(phase).sort(trackSort);
+  const list=[...candidateTracks(phase)].sort(trackSort);
   if(!list.length)return null;
   if(series?.playMode==='sequential'){
     const index=list.findIndex(t=>t.id===currentId);
-    if(index>=0 && list[index+1])return list[index+1];
+    if(index<0)return list[0];
+    /* 到最后一回返回 null，让 playNext 正常收尾；旧版会在这里随机跳回前面某一回 */
+    return list[index+1]||null;
   }
   return list.find(t=>t.id!==currentId)||null;
 }
@@ -1429,7 +1557,7 @@ async function finishSession(reason='播放结束'){
   $('fan').classList.remove('playing');$('nowType').textContent='晚安';$('nowTitle').textContent='已结束';
   $('nowGroup').textContent='';$('nowPhase').textContent=reason;setPlayIcon(false);
   if(!settings.playToEnd)paintTimeline(totalBeforeFinish,totalBeforeFinish);
-  updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary()
+  updateStartButton();updateMediaPlaybackState();createSnapshot('session-finished');renderLibrary();renderBingeCard()
 }
 
 function releasePhase(phase){const r=runtimes[phase];r.player.pause();r.player.removeAttribute('src');r.player.load();if(r.url)URL.revokeObjectURL(r.url);r.url=null;r.trackId=null;r.meta=null;r.lastMediaTime=0}
@@ -1544,7 +1672,19 @@ function saveSessionState(){
   writeJson(SESSION_KEY,data)
 }
 
-function showResumeCandidate(){const saved=readJson(SESSION_KEY,null);if(!saved||Date.now()-saved.savedAt>14*86400000)return;const activeId=saved.phaseTracks?.[saved.phase];if(!library.tracks.some(t=>t.id===activeId)){localStorage.removeItem(SESSION_KEY);return}$('resumeTitle').textContent=saved.series?`继续《${saved.series}》`:(saved.title||'继续上次播放');$('resumeSub').textContent=`${saved.title||''} · ${fmt(saved.positions?.[saved.phase]||saved.elapsed||0)} · ${new Date(saved.savedAt).toLocaleString('zh-CN')}`;$('resumeCard').classList.add('show');$('resumeYes').onclick=()=>restoreSession(saved);$('resumeNo').onclick=()=>{$('resumeCard').classList.remove('show');localStorage.removeItem(SESSION_KEY);toast('已放弃上次播放进度')}}
+function showResumeCandidate(){
+  const saved=readJson(SESSION_KEY,null);
+  /* V1.2.8：过期或失效的会话记录要清掉，否则会挡住“继续听”卡片 */
+  if(!saved||Date.now()-saved.savedAt>14*86400000){if(saved)localStorage.removeItem(SESSION_KEY);renderBingeCard();return}
+  const activeId=saved.phaseTracks?.[saved.phase];
+  if(!library.tracks.some(t=>t.id===activeId)){localStorage.removeItem(SESSION_KEY);renderBingeCard();return}
+  $('resumeTitle').textContent=saved.series?`继续《${saved.series}》`:(saved.title||'继续上次播放');
+  $('resumeSub').textContent=`${saved.title||''} · ${fmt(saved.positions?.[saved.phase]||saved.elapsed||0)} · ${new Date(saved.savedAt).toLocaleString('zh-CN')}`;
+  $('resumeCard').classList.add('show');
+  $('resumeYes').onclick=()=>restoreSession(saved);
+  $('resumeNo').onclick=()=>{$('resumeCard').classList.remove('show');localStorage.removeItem(SESSION_KEY);toast('已放弃上次播放进度');renderBingeCard()};
+  renderBingeCard();
+}
 async function restoreSession(saved){
   try{
     settings={...settings,...saved.settings};persistSettings();
@@ -1650,8 +1790,9 @@ async function init(){
   const safeMode=localStorage.getItem(SAFE_MODE_KEY)==='1';if(safeMode){localStorage.removeItem(SAFE_MODE_KEY);localStorage.removeItem(COLLAPSE_KEY);collapseState={artists:{},series:{}};showHealthBanner('已使用安全模式启动：仅重置临时界面状态，音频和统计未被删除。')}
   let migrated=false;
   try{
-    await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
-    $('miniStatus').textContent='V1.2.6：定时动态调整、启动稳定保护已启用';$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
+    await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('连播模式检查',ensureBingeModeMigration);await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
+    $('miniStatus').textContent='V1.2.8：整本连播 + 断点续播已启用';
+    $('brandVersion').textContent=`V${APP_VERSION} Stable · 整本连播`;$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
   }catch(err){
