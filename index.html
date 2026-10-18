@@ -113,6 +113,14 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:21px;height:21px;b
 .mode-tab{flex:1;border:0;background:transparent;color:var(--dim);padding:10px 4px;border-radius:11px;font-size:13px;font-weight:600}
 .mode-tab.active{background:var(--ember-dark);color:var(--ink);box-shadow:0 2px 8px rgba(0,0,0,.22)}
 .mode-hint{font-size:11px;color:var(--dim);line-height:1.6;margin:0 3px 12px}
+
+/* V1.2.10 连播模式的“定时关闭”：和时间轴分开，不参与对口/单口切换 */
+.binge-timer{display:none;margin:2px 4px 10px}
+.binge-timer.show{display:block}
+.binge-timer-head{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--dim);margin:0 2px 7px}
+.binge-timer-head span:last-child{color:var(--ember2);font-variant-numeric:tabular-nums}
+.binge-timer-pills{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.binge-timer-pills .pill{padding:8px 2px;font-size:11px;border-radius:14px}
 .pill{
   border:1px solid var(--line);background:var(--bg);color:var(--dim);
   border-radius:18px;padding:10px 5px;font-size:12px
@@ -329,7 +337,7 @@ input[type=file]{display:none}
     </div>
 
     <section class="config" id="configPanel">
-      <div class="config-summary"><div class="config-title">今晚的播放安排</div><button class="config-toggle" id="configToggle">收起</button></div>
+      <div class="config-summary"><div class="config-title" id="configTitle">今晚的播放安排</div><button class="config-toggle" id="configToggle">收起</button></div>
       <div class="config-body">
         <div class="mode-switch" id="playModeSwitch">
           <button class="mode-tab" data-mode="binge">连播 · 整本听</button>
@@ -384,6 +392,17 @@ input[type=file]{display:none}
         <div class="timeline-bg"></div><div class="timeline-fill" id="timelineFill"></div><div class="timeline-thumb" id="timelineThumb"></div>
       </div>
       <div class="time-row"><span id="elapsedText">已播 00:00</span><span id="totalText">剩余 20:00</span></div>
+    </div>
+
+    <div class="binge-timer" id="bingeTimer">
+      <div class="binge-timer-head"><span>定时关闭</span><span id="bingeTimerStatus">不关</span></div>
+      <div class="binge-timer-pills" id="bingeTimerPills">
+        <button class="pill" data-min="0">不关</button>
+        <button class="pill" data-min="30">30 分</button>
+        <button class="pill" data-min="60">60 分</button>
+        <button class="pill" data-min="90">90 分</button>
+        <button class="pill" data-min="custom">自定义</button>
+      </div>
     </div>
 
     <div class="controls">
@@ -521,9 +540,9 @@ input[type=file]{display:none}
 <script>
 'use strict';
 const BUILD_INFO=Object.freeze({
-  appVersion:'1.2.9',
+  appVersion:'1.2.10',
   schemaVersion:12,
-  cacheVersion:'20261018-v129'
+  cacheVersion:'20261018-v131'
 });
 const APP_VERSION=BUILD_INFO.appVersion;
 const TYPE_LABEL={duo:'对口相声',solo:'单口相声',story:'评书联播',none:'不播放'};
@@ -541,6 +560,7 @@ const MAX_SNAPSHOTS=20;
 const DIAG_KEY='xs_diagnostic_log_v124';
 const SAFE_MODE_KEY='xs_safe_mode_once_v124';
 const BINGE_KEY='xs_binge_mode_v128';
+const MODE_DEFAULT_KEY='xs_mode_default_v130';
 const TRASH_RETENTION_MS=7*24*60*60*1000;
 const REQUIRED_STORES=['groups','trackMeta','trackBlob','artists','series','trash','trashPayload'];
 const DEFAULT_SETTINGS={
@@ -549,7 +569,7 @@ const DEFAULT_SETTINGS={
   p2Type:'solo',p2Artist:'*',p2Series:'*',p2Track:'',
   manualMode:false,fadeEnabled:true,denoiseOn:false,fadeMs:2500,
   totalMinutes:20,playToEnd:false,switchMinutes:1,
-  playMode:'sleep',
+  playMode:'sleep',bingeTimerMinutes:0,
   shakeEnabled:false,shakeMinutes:15
 };
 
@@ -849,6 +869,7 @@ function sanitizeSettings(raw){
   s.totalMinutes=clamp(Number(s.totalMinutes)||20,1,720);s.playToEnd=!!s.playToEnd;s.switchMinutes=clamp(Number(s.switchMinutes)||1,1,Math.max(1,s.totalMinutes-1));
   /* V1.2.9：老用户按原来的 playToEnd 推断模式，不改变既有行为 */
   s.playMode=s.playMode==='binge'?'binge':(s.playMode==='sleep'?'sleep':(s.playToEnd?'binge':'sleep'));
+  s.bingeTimerMinutes=clamp(Number(s.bingeTimerMinutes)||0,0,720);
   s.schemaVersion=12;return s;
 }
 const oldSettings=readJson(OLD_SETTINGS_KEY,{});
@@ -869,6 +890,54 @@ function setPlayMode(mode,{silent=false}={}){
   if(changed&&!silent)toast(next==='binge'
     ?'连播模式：按作品顺序一路听，时间轴是本回的真实进度'
     :'睡眠模式：开场播够时长后切收尾，到点淡出');
+}
+
+/* ---------- V1.2.10 连播模式的“定时关闭” ----------
+   只做一件事：到点淡出停止。不参与开场/收尾切换，
+   和睡眠模式那套 totalMinutes/switchMinutes 完全独立。 */
+let bingeTimerLeft=0,bingeTimerMark=0;
+function updateBingeTimerUI(){
+  const box=$('bingeTimer');if(!box)return;
+  const on=isBingeMode();
+  box.classList.toggle('show',on);
+  if(!on)return;
+  const active=Number(settings.bingeTimerMinutes)||0;
+  document.querySelectorAll('#bingeTimerPills .pill').forEach(b=>{
+    b.classList.toggle('active',b.dataset.min!=='custom'&&Number(b.dataset.min)===active);
+  });
+  $('bingeTimerStatus').textContent=bingeTimerLeft>0
+    ?`${fmt(bingeTimerLeft)} 后停止`
+    :(active>0?`${active} 分钟 · 播放时开始计时`:'不关');
+}
+function resetBingeTimer(){
+  bingeTimerLeft=Math.max(0,Number(settings.bingeTimerMinutes)||0)*60;
+  bingeTimerMark=0;
+  updateBingeTimerUI();
+}
+function setBingeTimer(minutes){
+  minutes=Math.max(0,Number(minutes)||0);
+  settings.bingeTimerMinutes=minutes;persistSettings();
+  bingeTimerLeft=minutes*60;bingeTimerMark=session&&session.running?Date.now():0;
+  updateBingeTimerUI();
+  toast(minutes>0?`定时关闭：${minutes} 分钟后停止`:'定时关闭已取消');
+}
+async function stopByBingeTimer(){
+  bingeTimerLeft=0;bingeTimerMark=0;
+  const p=activePlayer();
+  try{await fadeVolume(p,p.volume||0,0,Math.min(settings.fadeMs||2500,4000))}catch(err){recordDiagnostic('binge-timer-fade',err)}
+  try{p.pause();p.volume=1}catch{}
+  if(session.running)pauseSession();
+  updateBingeTimerUI();
+  toast('定时时间到，已停止播放',3200);
+}
+function tickBingeTimer(){
+  if(!bingeTimerLeft)return false;
+  const now=Date.now();
+  if(bingeTimerMark)bingeTimerLeft=Math.max(0,bingeTimerLeft-(now-bingeTimerMark)/1000);
+  bingeTimerMark=now;
+  if(bingeTimerLeft<=0.2){stopByBingeTimer();return true}
+  updateBingeTimerUI();
+  return false;
 }
 async function migrateSettingsV11(){
   if(readJson(SETTINGS_KEY,null))return;
@@ -928,12 +997,27 @@ function updateModeUI(){
   if(typeof session!=='undefined'&&session.has)restoreTimelineView();
   else if(settings.playToEnd){$('elapsedText').textContent='本回 00:00';$('totalText').textContent='全长 --:--'}
   else{$('elapsedText').textContent='已播 00:00';$('totalText').textContent=`剩余 ${fmt(settings.totalMinutes*60)}`}
+  $('configTitle').textContent=binge?'连播 · 整本听':'今晚的播放安排';
+  updateBingeTimerUI();
+  if(!session.has)$('miniStatus').textContent=binge
+    ?'连播模式 · 时间轴是本回真实进度，可另设定时关闭'
+    :'睡眠模式 · 开场后切收尾，到点淡出';
   updateStartButton();
 }
 document.querySelectorAll('.seg').forEach(btn=>btn.onclick=()=>{
   const phase=Number(btn.dataset.phase),type=btn.dataset.type;settings[`p${phase}Type`]=type;settings[`p${phase}Artist`]='*';settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings();
 });
 $('playModeSwitch').onclick=e=>{const b=e.target.closest('.mode-tab');if(!b)return;setPlayMode(b.dataset.mode)};
+$('bingeTimerPills').onclick=e=>{
+  const b=e.target.closest('.pill');if(!b)return;
+  if(b.dataset.min==='custom'){
+    const v=prompt('多少分钟后停止播放？',settings.bingeTimerMinutes||60);
+    if(v===null)return;
+    const m=Number(v);if(!Number.isFinite(m)||m<0){toast('请输入正确的分钟数');return}
+    setBingeTimer(Math.round(m));return;
+  }
+  setBingeTimer(Number(b.dataset.min));
+};
 [1,2].forEach(phase=>{
   $(`phase${phase}Artist`).onchange=e=>{settings[`p${phase}Artist`]=e.target.value;settings[`p${phase}Series`]='*';settings[`p${phase}Track`]='';saveSettings()};
   $(`phase${phase}Series`).onchange=e=>{settings[`p${phase}Series`]=e.target.value;settings[`p${phase}Track`]='';saveSettings()};
@@ -1333,7 +1417,10 @@ async function loadTrack(phase,trackId,position=null){
   }finally{r.loading=false}
 }
 function updateNowPlaying(meta,phase=session.phase){
-  if(!meta)return;const ep=Number.isFinite(meta.episodeNumber)?`第 ${meta.episodeNumber} 集 · `:'';
+  if(!meta)return;
+  /* 标题里已经带“第N回/集”就不再重复加前缀 */
+  const titleHasNumber=/第\s*\d+\s*[集回期话部章]/.test(meta.title)||/^\s*\d/.test(meta.title);
+  const ep=Number.isFinite(meta.episodeNumber)&&!titleHasNumber?`第 ${meta.episodeNumber} 集 · `:'';
   $('nowType').textContent=typeLabel(meta.type);$('nowTitle').textContent=`${ep}${meta.title}`;$('nowGroup').textContent=`${artistName(meta.artistId)} · 《${seriesName(meta.seriesId)}》`;
   if(isBingeMode()){
     const ordered=library.tracks.filter(t=>t.seriesId===meta.seriesId&&!t.missingBlob).sort(trackSort);
@@ -1381,7 +1468,7 @@ async function startNewSession(){
     baseDurationSeconds:settings.playToEnd?0:(Number(settings.totalMinutes)||20)*60,
     extensionSeconds:0,phaseTracks:{1:t1.id,2:t2?.id||null}
   });
-  await loadTrack(1,t1.id,null);addHistory(t1);await playSession();
+  await loadTrack(1,t1.id,null);addHistory(t1);if(isBingeMode())resetBingeTimer();await playSession();
 }
 
 /* V1.2.8：从资料库里的某一回直接开播，之后按作品顺序自动连播 */
@@ -1408,7 +1495,7 @@ async function startFromTrack(track,fromStart=false){
   });
   persistSettings();updateModeUI();
   await loadTrack(1,track.id,fromStart?0:null);
-  addHistory(track);await playSession();
+  addHistory(track);resetBingeTimer();await playSession();
 }
 
 /* 从资料库某部作品直接开“整本连播”：从上次听到的那一回、那个位置接着放 */
@@ -1449,6 +1536,16 @@ function renderBingeCard(){
   card.classList.add('show');
 }
 
+/* 一次性把默认模式落到“连播”：老用户升级后第一眼就是完整时间轴，
+   之后手动切到睡眠模式就不会再被改回来 */
+function applyModeDefaultOnce(){
+  if(localStorage.getItem(MODE_DEFAULT_KEY))return;
+  localStorage.setItem(MODE_DEFAULT_KEY,'1');
+  if(settings.playMode!=='binge'){
+    settings.playMode='binge';settings.playToEnd=true;persistSettings();
+    setTimeout(()=>toast('已切到连播模式：时间轴显示整段音频，要改回睡眠模式点配置面板顶部开关',5000),900);
+  }
+}
 /* 一次性把“多回长篇”设为整本连播，之后完全尊重手动设置 */
 async function ensureBingeModeMigration(){
   if(localStorage.getItem(BINGE_KEY)==='1')return;
@@ -1488,6 +1585,7 @@ async function playSession(){
 
 function pauseSession(){
   if(!session.running)return;captureMediaProgress(session.phase);flushPlayTime();persistTrackProgress(session.phase,true);
+  bingeTimerMark=0;
   session.running=false;if(!settings.playToEnd)session.elapsed=(Date.now()-session.startMs)/1000;
   session.deadlineAt=0;setSessionState(SESSION_STATES.PAUSED);
   Object.values(runtimes).forEach(r=>r.player.pause());stopTicker();$('fan').classList.remove('playing');
@@ -1635,6 +1733,7 @@ function stopTicker(){if(ticker){clearInterval(ticker);ticker=null}if(boundaryTi
 function tick(){
   if(!session.running)return;if(!settings.playToEnd)session.elapsed=sessionElapsedNow();captureMediaProgress(session.phase);
   if(checkSessionBoundaries())return;
+  if(isBingeMode()&&tickBingeTimer())return;
   if(settings.playToEnd){const p=activePlayer();paintTimeline(p.currentTime||0,Number.isFinite(p.duration)?p.duration:0)}
   else paintTimeline(session.elapsed,sessionTotalSeconds());
   if(Date.now()-session.lastSavedAt>5000){saveSessionState();session.lastSavedAt=Date.now()}
@@ -1842,8 +1941,7 @@ async function init(){
   const safeMode=localStorage.getItem(SAFE_MODE_KEY)==='1';if(safeMode){localStorage.removeItem(SAFE_MODE_KEY);localStorage.removeItem(COLLAPSE_KEY);collapseState={artists:{},series:{}};showHealthBanner('已使用安全模式启动：仅重置临时界面状态，音频和统计未被删除。')}
   let migrated=false;
   try{
-    await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('连播模式检查',ensureBingeModeMigration);await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
-    $('miniStatus').textContent='V1.2.8：整本连播 + 断点续播已启用';
+    await initStep('数据库',openDB,{critical:true});await initStep('清理过期回收站',()=>purgeExpiredTrash(false));migrated=!!(await initStep('旧版数据迁移',ensureV12Migration));await initStep('资料库',refreshLibrary,{critical:true});await initStep('连播模式检查',ensureBingeModeMigration);await initStep('默认播放模式',applyModeDefaultOnce);await initStep('设置迁移',migrateSettingsV11);await initStep('每日快照',async()=>ensureDailySnapshot());await initStep('统计渲染',async()=>renderStats());await initStep('模式界面',async()=>updateModeUI());await initStep('回收站计数',updateTrashCount);if(!safeMode)await initStep('上次播放恢复提示',async()=>showResumeCandidate());
     $('brandVersion').textContent=`V${APP_VERSION} Stable · 整本连播`;$('versionInfo').textContent=`当前 V${APP_VERSION} · Schema 12 · 回收站保留 7 天`;
     if(migrated&&!localStorage.getItem(MIGRATION_KEY)){localStorage.setItem(MIGRATION_KEY,'1');setTimeout(()=>toast('旧版分组已安全迁移到“未设置艺术家”下，可在资料库中调整归属',5000),700)}
     setTimeout(()=>runFullDiagnostics({open:false}).catch(err=>recordDiagnostic('startup-health',err)),500);
